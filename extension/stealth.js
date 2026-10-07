@@ -172,23 +172,60 @@
     if (event.data.type === 'MAXITET_SET_FREEZE_CAM') {
       setFreezeCam(Boolean(event.data.enabled));
     }
+    if (event.data.type === 'MAXITET_SET_FREEZE_MODE') {
+      freezeCamMode = event.data.mode || 'loop';
+      if (isFreezeCamActive) {
+        if (freezeCamMode === 'photo' && !savedPhotoBitmap) {
+          takePhotoSnapshot();
+        } else if (freezeCamMode === 'loop') {
+          loopStartTime = performance.now();
+          if (!recordedPingPongFrames.length && !customGifFrames.length && !customVideoEl && !hasPersistedLoop) {
+            start3SecRecording();
+          }
+        }
+      }
+    }
     if (event.data.type === 'MAXITET_START_RECORD_FREEZE') {
+      freezeCamMode = 'loop';
       start3SecRecording();
     }
+    if (event.data.type === 'MAXITET_TAKE_FREEZE_PHOTO') {
+      freezeCamMode = 'photo';
+      takePhotoSnapshot();
+    }
+    if (event.data.type === 'MAXITET_SET_FREEZE_PHOTO') {
+      freezeCamMode = 'photo';
+      loadSavedPhoto(event.data.dataUrl);
+    }
     if (event.data.type === 'MAXITET_SET_FREEZE_GIF') {
+      freezeCamMode = 'loop';
       loadCustomGif(event.data.dataUrl);
     }
-    if (event.data.type === 'MAXITET_RESTORE_SNAPSHOT' && event.data.dataUrl) {
-      loadCustomGif(event.data.dataUrl);
+    if (event.data.type === 'MAXITET_INIT_FREEZE_STATE') {
+      freezeCamMode = event.data.mode || 'loop';
+      isFreezeCamActive = Boolean(event.data.enabled);
+      if (event.data.customGifDataUrl) {
+        loadCustomGif(event.data.customGifDataUrl);
+      }
+      if (event.data.photoDataUrl) {
+        loadSavedPhoto(event.data.photoDataUrl);
+      }
+      if (event.data.loopFrames && Array.isArray(event.data.loopFrames)) {
+        restoreLoopFrames(event.data.loopFrames);
+      }
     }
   });
 
-  // ─── 6. Заморозка вебки (Freeze Cam / 3-сек пинг-понг GIF) ────
+  // ─── 6. Заморозка вебки (Freeze Cam: 3-сек пинг-понг / фото) ───
 
   let isFreezeCamActive = false;
+  let freezeCamMode = 'loop'; // 'loop' | 'photo'
   let isRecording3Sec = false;
   let recordStartTime = 0;
   let pendingRecordOnCameraStart = false;
+  let pendingPhotoOnCameraStart = false;
+  let hasPersistedLoop = false;
+  let savedPhotoBitmap = null;
   let recordedPingPongFrames = []; // [ImageBitmap, ...]
   let customGifFrames = []; // [{ bitmap, durationMs }]
   let customGifTotalMs = 0;
@@ -202,7 +239,120 @@
 
   let loopStartTime = 0;
   let lastCapturedFrameTime = 0;
-  const FRAME_INTERVAL_MS = 60; // ~16.6 fps (около 50 кадров за 3 секунды)
+  const FRAME_INTERVAL_MS = 75; // ~13.3 fps (около 40 кадров за 3 секунды, плавно и легко сохраняется)
+
+  function frameToDataUrl(bitmap, maxW = 480) {
+    const w = bitmap.width || 640;
+    const h = bitmap.height || 480;
+    const scale = Math.min(1, maxW / w);
+    const tw = Math.round(w * scale);
+    const th = Math.round(h * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = tw;
+    canvas.height = th;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(bitmap, 0, 0, tw, th);
+    return canvas.toDataURL('image/jpeg', 0.68);
+  }
+
+  function serializeAndSaveLoopFrames(bitmaps) {
+    if (!Array.isArray(bitmaps) || bitmaps.length === 0) return;
+    try {
+      const first = bitmaps[0];
+      const w = first.width || 640;
+      const h = first.height || 480;
+      const scale = Math.min(1, 480 / w);
+      const tw = Math.round(w * scale);
+      const th = Math.round(h * scale);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = tw;
+      canvas.height = th;
+      const ctx = canvas.getContext('2d');
+
+      const dataUrls = [];
+      for (const bmp of bitmaps) {
+        ctx.drawImage(bmp, 0, 0, tw, th);
+        dataUrls.push(canvas.toDataURL('image/jpeg', 0.65));
+      }
+
+      window.postMessage({
+        type: 'MAXITET_SAVE_LOOP_FRAMES',
+        frames: dataUrls,
+      }, '*');
+    } catch (e) {
+      console.warn('[Maxitet Master] Ошибка сериализации кадров цикла:', e);
+    }
+  }
+
+  async function restoreLoopFrames(dataUrls) {
+    if (!Array.isArray(dataUrls) || dataUrls.length === 0) return;
+    try {
+      const bitmaps = [];
+      for (const url of dataUrls) {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        const bmp = await createImageBitmap(blob);
+        bitmaps.push(bmp);
+      }
+      if (bitmaps.length > 0) {
+        recordedPingPongFrames.forEach(b => b && b.close && b.close());
+        recordedPingPongFrames = bitmaps;
+        hasPersistedLoop = true;
+      }
+    } catch (err) {
+      console.warn('[Maxitet Master] Ошибка восстановления кадров цикла:', err);
+    }
+  }
+
+  async function loadSavedPhoto(dataUrl) {
+    if (savedPhotoBitmap && savedPhotoBitmap.close) {
+      savedPhotoBitmap.close();
+      savedPhotoBitmap = null;
+    }
+    if (!dataUrl) return;
+    try {
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      savedPhotoBitmap = await createImageBitmap(blob);
+    } catch (e) {
+      console.warn('[Maxitet Master] Ошибка декодирования фото:', e);
+    }
+  }
+
+  function takePhotoSnapshot() {
+    if (!liveWebcamVideo || liveWebcamVideo.readyState < 2) {
+      pendingPhotoOnCameraStart = true;
+      window.postMessage({
+        type: 'MAXITET_PHOTO_STATUS',
+        status: 'waiting_camera',
+      }, '*');
+      return;
+    }
+
+    pendingPhotoOnCameraStart = false;
+    createImageBitmap(liveWebcamVideo).then((bmp) => {
+      if (savedPhotoBitmap && savedPhotoBitmap.close) {
+        savedPhotoBitmap.close();
+      }
+      savedPhotoBitmap = bmp;
+      freezeCamMode = 'photo';
+      isFreezeCamActive = true;
+
+      const dataUrl = frameToDataUrl(bmp, 640);
+      window.postMessage({
+        type: 'MAXITET_SAVE_PHOTO',
+        dataUrl,
+      }, '*');
+
+      window.postMessage({
+        type: 'MAXITET_PHOTO_STATUS',
+        status: 'done',
+      }, '*');
+    }).catch((err) => {
+      console.warn('[Maxitet Master] Ошибка снимка с вебки:', err);
+    });
+  }
 
   async function loadCustomGif(dataUrl) {
     customGifFrames.forEach(f => f.bitmap && f.bitmap.close && f.bitmap.close());
@@ -255,6 +405,7 @@
   }
 
   function start3SecRecording() {
+    freezeCamMode = 'loop';
     if (!liveWebcamVideo || liveWebcamVideo.readyState < 2) {
       pendingRecordOnCameraStart = true;
       window.postMessage({
@@ -319,17 +470,26 @@
 
   function setFreezeCam(enabled) {
     if (enabled) {
-      if (customGifFrames.length > 0 || customVideoEl) {
-        isFreezeCamActive = true;
-        isRecording3Sec = false;
-        loopStartTime = performance.now();
+      isFreezeCamActive = true;
+      isRecording3Sec = false;
+      loopStartTime = performance.now();
+
+      if (freezeCamMode === 'photo') {
+        if (!savedPhotoBitmap) {
+          takePhotoSnapshot();
+        }
       } else {
-        start3SecRecording();
+        if (customGifFrames.length > 0 || customVideoEl || recordedPingPongFrames.length > 0 || hasPersistedLoop) {
+          loopStartTime = performance.now();
+        } else {
+          start3SecRecording();
+        }
       }
     } else {
       isFreezeCamActive = false;
       isRecording3Sec = false;
       pendingRecordOnCameraStart = false;
+      pendingPhotoOnCameraStart = false;
     }
   }
 
@@ -356,7 +516,7 @@
             if (now - lastCapturedFrameTime >= FRAME_INTERVAL_MS) {
               lastCapturedFrameTime = now;
               createImageBitmap(liveWebcamVideo).then((bmp) => {
-                if (isRecording3Sec) {
+                if (isRecording3Sec || (isFreezeCamActive && recordedPingPongFrames.length < 50)) {
                   recordedPingPongFrames.push(bmp);
                 } else {
                   bmp.close();
@@ -368,12 +528,15 @@
               isRecording3Sec = false;
               isFreezeCamActive = true;
               loopStartTime = now;
+              hasPersistedLoop = true;
 
               window.postMessage({
                 type: 'MAXITET_RECORD_STATUS',
                 status: 'done',
                 framesCount: recordedPingPongFrames.length,
               }, '*');
+
+              serializeAndSaveLoopFrames(recordedPingPongFrames);
             }
           }
         } else if (!isFreezeCamActive) {
@@ -382,40 +545,49 @@
             virtualCtx.drawImage(liveWebcamVideo, 0, 0, virtualCanvas.width, virtualCanvas.height);
           }
         } else {
-          // ─── 3. Режим заморозки: пинг-понг воспроизведение (1 2 3 2 1 2 3) ───
-          if (!loopStartTime) loopStartTime = now;
+          // ─── 3. Режим заморозки ───
+          if (freezeCamMode === 'photo') {
+            if (savedPhotoBitmap) {
+              virtualCtx.drawImage(savedPhotoBitmap, 0, 0, virtualCanvas.width, virtualCanvas.height);
+            } else if (liveWebcamVideo && liveWebcamVideo.readyState >= 2) {
+              virtualCtx.drawImage(liveWebcamVideo, 0, 0, virtualCanvas.width, virtualCanvas.height);
+            }
+          } else {
+            // Режим Анимации (GIF / пинг-понг 3 сек)
+            if (!loopStartTime) loopStartTime = now;
 
-          if (customVideoEl && customVideoEl.readyState >= 2) {
-            virtualCtx.drawImage(customVideoEl, 0, 0, virtualCanvas.width, virtualCanvas.height);
-          } else if (customGifFrames.length > 0) {
-            const elapsed = (now - loopStartTime) % (customGifTotalMs || 1000);
-            let acc = 0;
-            let activeBmp = customGifFrames[0].bitmap;
-            for (let i = 0; i < customGifFrames.length; i++) {
-              acc += customGifFrames[i].durationMs;
-              if (elapsed <= acc) {
-                activeBmp = customGifFrames[i].bitmap;
-                break;
+            if (customVideoEl && customVideoEl.readyState >= 2) {
+              virtualCtx.drawImage(customVideoEl, 0, 0, virtualCanvas.width, virtualCanvas.height);
+            } else if (customGifFrames.length > 0) {
+              const elapsed = (now - loopStartTime) % (customGifTotalMs || 1000);
+              let acc = 0;
+              let activeBmp = customGifFrames[0].bitmap;
+              for (let i = 0; i < customGifFrames.length; i++) {
+                acc += customGifFrames[i].durationMs;
+                if (elapsed <= acc) {
+                  activeBmp = customGifFrames[i].bitmap;
+                  break;
+                }
               }
-            }
-            if (activeBmp) {
-              virtualCtx.drawImage(activeBmp, 0, 0, virtualCanvas.width, virtualCanvas.height);
-            }
-          } else if (recordedPingPongFrames.length > 0) {
-            const count = recordedPingPongFrames.length;
-            if (count === 1) {
-              virtualCtx.drawImage(recordedPingPongFrames[0], 0, 0, virtualCanvas.width, virtualCanvas.height);
-            } else {
-              const period = (count - 1) * 2;
-              const step = Math.floor((now - loopStartTime) / FRAME_INTERVAL_MS) % period;
-              const frameIdx = step < count ? step : (period - step);
-              const bmp = recordedPingPongFrames[frameIdx] || recordedPingPongFrames[0];
-              if (bmp) {
-                virtualCtx.drawImage(bmp, 0, 0, virtualCanvas.width, virtualCanvas.height);
+              if (activeBmp) {
+                virtualCtx.drawImage(activeBmp, 0, 0, virtualCanvas.width, virtualCanvas.height);
               }
+            } else if (recordedPingPongFrames.length > 0) {
+              const count = recordedPingPongFrames.length;
+              if (count === 1) {
+                virtualCtx.drawImage(recordedPingPongFrames[0], 0, 0, virtualCanvas.width, virtualCanvas.height);
+              } else {
+                const period = (count - 1) * 2;
+                const step = Math.floor((now - loopStartTime) / FRAME_INTERVAL_MS) % period;
+                const frameIdx = step < count ? step : (period - step);
+                const bmp = recordedPingPongFrames[frameIdx] || recordedPingPongFrames[0];
+                if (bmp) {
+                  virtualCtx.drawImage(bmp, 0, 0, virtualCanvas.width, virtualCanvas.height);
+                }
+              }
+            } else if (liveWebcamVideo && liveWebcamVideo.readyState >= 2) {
+              virtualCtx.drawImage(liveWebcamVideo, 0, 0, virtualCanvas.width, virtualCanvas.height);
             }
-          } else if (liveWebcamVideo && liveWebcamVideo.readyState >= 2) {
-            virtualCtx.drawImage(liveWebcamVideo, 0, 0, virtualCanvas.width, virtualCanvas.height);
           }
         }
       }
@@ -463,17 +635,31 @@
 
           setupFreezeCamLoop();
 
-          // Если заморозка или отложенная запись уже включена на момент запуска камеры:
-          if (isFreezeCamActive || pendingRecordOnCameraStart) {
-            const triggerRecord = () => {
-              if (pendingRecordOnCameraStart || (isFreezeCamActive && !recordedPingPongFrames.length && !customGifFrames.length)) {
+          // Если заморозка или отложенное действие активно на момент старта камеры:
+          if (isFreezeCamActive || pendingRecordOnCameraStart || pendingPhotoOnCameraStart) {
+            const triggerFreeze = () => {
+              if (pendingRecordOnCameraStart) {
                 start3SecRecording();
+              } else if (pendingPhotoOnCameraStart) {
+                takePhotoSnapshot();
+              } else if (isFreezeCamActive) {
+                if (freezeCamMode === 'photo') {
+                  if (!savedPhotoBitmap) {
+                    takePhotoSnapshot();
+                  }
+                } else {
+                  if (recordedPingPongFrames.length > 0 || customGifFrames.length > 0 || customVideoEl || hasPersistedLoop) {
+                    loopStartTime = performance.now();
+                  } else {
+                    start3SecRecording();
+                  }
+                }
               }
             };
             if (liveWebcamVideo.readyState >= 2) {
-              triggerRecord();
+              triggerFreeze();
             } else {
-              liveWebcamVideo.addEventListener('loadeddata', triggerRecord, { once: true });
+              liveWebcamVideo.addEventListener('loadeddata', triggerFreeze, { once: true });
             }
           }
 

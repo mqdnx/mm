@@ -83,34 +83,77 @@
 
   const freezeCamToggle = document.getElementById('freeze-cam-toggle');
   const freezeCamBar = document.querySelector('.freeze-cam-bar');
+
+  // Mode selectors & panels
+  const freezeModeLoopBtn = document.getElementById('freeze-mode-loop');
+  const freezeModePhotoBtn = document.getElementById('freeze-mode-photo');
+  const freezePanelLoop = document.getElementById('freeze-panel-loop');
+  const freezePanelPhoto = document.getElementById('freeze-panel-photo');
+
+  // Loop mode controls
   const freezeRecordBtn = document.getElementById('freeze-record-btn');
   const freezeGifFile = document.getElementById('freeze-gif-file');
   const freezeGifBtn = document.getElementById('freeze-gif-btn');
-  const freezeGifLabel = document.getElementById('freeze-gif-label');
+  const freezeLoopLabel = document.getElementById('freeze-loop-label');
   const freezeGifClear = document.getElementById('freeze-gif-clear');
+
+  // Photo mode controls
+  const freezeSnapshotBtn = document.getElementById('freeze-snapshot-btn');
+  const freezePhotoFile = document.getElementById('freeze-photo-file');
+  const freezePhotoBtn = document.getElementById('freeze-photo-btn');
+  const freezePhotoLabel = document.getElementById('freeze-photo-label');
+  const freezePhotoClear = document.getElementById('freeze-photo-clear');
+
+  let currentFreezeMode = 'loop';
 
   function updateFreezeCamUI(enabled) {
     if (freezeCamToggle) freezeCamToggle.checked = enabled;
     if (freezeCamBar) freezeCamBar.classList.toggle('disabled', !enabled);
   }
 
-  function updateGifUI(gifName) {
+  function setFreezeModeUI(mode) {
+    currentFreezeMode = mode || 'loop';
+    if (currentFreezeMode === 'photo') {
+      if (freezeModePhotoBtn) freezeModePhotoBtn.classList.add('active');
+      if (freezeModeLoopBtn) freezeModeLoopBtn.classList.remove('active');
+      if (freezePanelPhoto) freezePanelPhoto.style.display = 'block';
+      if (freezePanelLoop) freezePanelLoop.style.display = 'none';
+    } else {
+      if (freezeModeLoopBtn) freezeModeLoopBtn.classList.add('active');
+      if (freezeModePhotoBtn) freezeModePhotoBtn.classList.remove('active');
+      if (freezePanelLoop) freezePanelLoop.style.display = 'block';
+      if (freezePanelPhoto) freezePanelPhoto.style.display = 'none';
+    }
+  }
+
+  function updateLoopUI(gifName, hasSavedLoop) {
     if (gifName) {
-      if (freezeGifLabel) {
-        freezeGifLabel.textContent = `GIF: ${gifName}`;
-        freezeGifLabel.classList.add('has-custom');
-        freezeGifLabel.title = gifName;
+      if (freezeLoopLabel) {
+        freezeLoopLabel.textContent = `GIF: ${gifName}`;
+        freezeLoopLabel.classList.add('has-custom');
+        freezeLoopLabel.title = gifName;
       }
       if (freezeGifClear) freezeGifClear.style.display = 'flex';
       if (freezeGifBtn) {
         const span = freezeGifBtn.querySelector('span');
         if (span) span.textContent = 'Заменить';
       }
+    } else if (hasSavedLoop) {
+      if (freezeLoopLabel) {
+        freezeLoopLabel.textContent = '3-сек запись сохранена';
+        freezeLoopLabel.classList.remove('has-custom');
+        freezeLoopLabel.title = 'Готовая зацикленная 3-сек запись (пинг-понг)';
+      }
+      if (freezeGifClear) freezeGifClear.style.display = 'none';
+      if (freezeGifBtn) {
+        const span = freezeGifBtn.querySelector('span');
+        if (span) span.textContent = 'Свой GIF';
+      }
     } else {
-      if (freezeGifLabel) {
-        freezeGifLabel.textContent = 'Запись 3 сек (пинг-понг)';
-        freezeGifLabel.classList.remove('has-custom');
-        freezeGifLabel.title = 'Камера запишет 3 секунды и зациклит пинг-понгом (1 2 3 2 1)';
+      if (freezeLoopLabel) {
+        freezeLoopLabel.textContent = 'Запись 3 сек (пинг-понг)';
+        freezeLoopLabel.classList.remove('has-custom');
+        freezeLoopLabel.title = 'Камера запишет 3 секунды и зациклит пинг-понгом';
       }
       if (freezeGifClear) freezeGifClear.style.display = 'none';
       if (freezeGifBtn) {
@@ -120,26 +163,110 @@
     }
   }
 
+  function updatePhotoUI(photoName, hasPhoto) {
+    if (photoName) {
+      if (freezePhotoLabel) {
+        freezePhotoLabel.textContent = `Фото: ${photoName}`;
+        freezePhotoLabel.classList.add('has-custom');
+        freezePhotoLabel.title = photoName;
+      }
+      if (freezePhotoClear) freezePhotoClear.style.display = 'flex';
+      if (freezePhotoBtn) {
+        const span = freezePhotoBtn.querySelector('span');
+        if (span) span.textContent = 'Заменить';
+      }
+    } else if (hasPhoto) {
+      if (freezePhotoLabel) {
+        freezePhotoLabel.textContent = 'Снимок вебки сохранён';
+        freezePhotoLabel.classList.remove('has-custom');
+        freezePhotoLabel.title = 'Сохранённый статичный стоп-кадр с камеры';
+      }
+      if (freezePhotoClear) freezePhotoClear.style.display = 'none';
+      if (freezePhotoBtn) {
+        const span = freezePhotoBtn.querySelector('span');
+        if (span) span.textContent = 'Своё фото';
+      }
+    } else {
+      if (freezePhotoLabel) {
+        freezePhotoLabel.textContent = 'Стоп-кадр (снимок)';
+        freezePhotoLabel.classList.remove('has-custom');
+        freezePhotoLabel.title = 'Сделайте снимок с вебки или загрузите фото';
+      }
+      if (freezePhotoClear) freezePhotoClear.style.display = 'none';
+      if (freezePhotoBtn) {
+        const span = freezePhotoBtn.querySelector('span');
+        if (span) span.textContent = 'Своё фото';
+      }
+    }
+  }
+
   if (chrome.storage && chrome.storage.local) {
-    chrome.storage.local.get({ freezeCam: false, freezeCamGifName: null }, (res) => {
+    chrome.storage.local.get({
+      freezeCam: false,
+      freezeCamMode: 'loop',
+      freezeCamGifName: null,
+      freezeCamPhotoName: null,
+      freezeCamHasSavedLoop: false,
+      freezeCamPhoto: null,
+    }, (res) => {
       updateFreezeCamUI(res.freezeCam);
-      updateGifUI(res.freezeCamGifName);
+      setFreezeModeUI(res.freezeCamMode);
+      updateLoopUI(res.freezeCamGifName, res.freezeCamHasSavedLoop);
+      updatePhotoUI(res.freezeCamPhotoName, Boolean(res.freezeCamPhoto));
     });
   }
 
+  // Переключение режима: Анимация (Loop)
+  if (freezeModeLoopBtn) {
+    freezeModeLoopBtn.addEventListener('click', () => {
+      setFreezeModeUI('loop');
+      if (chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ freezeCamMode: 'loop' });
+      }
+      sendToContent({ type: 'SET_FREEZE_MODE', mode: 'loop' }).catch(() => {});
+    });
+  }
+
+  // Переключение режима: Фото (Photo)
+  if (freezeModePhotoBtn) {
+    freezeModePhotoBtn.addEventListener('click', () => {
+      setFreezeModeUI('photo');
+      if (chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ freezeCamMode: 'photo' });
+      }
+      sendToContent({ type: 'SET_FREEZE_MODE', mode: 'photo' }).catch(() => {});
+    });
+  }
+
+  // Запись 3 сек (Loop)
   if (freezeRecordBtn) {
     freezeRecordBtn.addEventListener('click', () => {
       updateFreezeCamUI(true);
       if (chrome.storage && chrome.storage.local) {
-        chrome.storage.local.set({ freezeCam: true });
+        chrome.storage.local.set({ freezeCam: true, freezeCamMode: 'loop' });
         chrome.storage.local.remove(['freezeCamGif', 'freezeCamGifName']);
       }
-      updateGifUI(null);
+      updateLoopUI(null, false);
       sendToContent({ type: 'START_RECORD_FREEZE' }).catch(() => {});
       showToast('Запуск записи 3 секунд...', 'info');
     });
   }
 
+  // Снимок с вебки (Photo)
+  if (freezeSnapshotBtn) {
+    freezeSnapshotBtn.addEventListener('click', () => {
+      updateFreezeCamUI(true);
+      if (chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ freezeCam: true, freezeCamMode: 'photo' });
+        chrome.storage.local.remove(['freezeCamPhotoName']);
+      }
+      updatePhotoUI(null, true);
+      sendToContent({ type: 'TAKE_FREEZE_PHOTO' }).catch(() => {});
+      showToast('Создание снимка с вебки...', 'info');
+    });
+  }
+
+  // Toggle freeze cam
   if (freezeCamToggle) {
     freezeCamToggle.addEventListener('change', () => {
       const enabled = freezeCamToggle.checked;
@@ -149,19 +276,38 @@
       }
       sendToContent({ type: 'SET_FREEZE_CAM', enabled }).catch(() => {});
       if (enabled) {
-        chrome.storage.local.get({ freezeCamGifName: null }, (res) => {
-          if (!res.freezeCamGifName) {
-            showToast('Запись 3 секунд вебки...', 'info');
-          } else {
-            showToast('Трансляция GIF включена', 'success');
-          }
-        });
+        if (chrome.storage && chrome.storage.local) {
+          chrome.storage.local.get({
+            freezeCamMode: 'loop',
+            freezeCamGifName: null,
+            freezeCamPhotoName: null,
+            freezeCamHasSavedLoop: false,
+            freezeCamPhoto: null,
+          }, (res) => {
+            if (res.freezeCamMode === 'photo') {
+              if (res.freezeCamPhotoName || res.freezeCamPhoto) {
+                showToast('Трансляция фото включена', 'success');
+              } else {
+                showToast('Создание стоп-кадра с вебки...', 'info');
+              }
+            } else {
+              if (res.freezeCamGifName) {
+                showToast('Трансляция GIF включена', 'success');
+              } else if (res.freezeCamHasSavedLoop) {
+                showToast('Зацикленная трансляция включена (3 сек)', 'success');
+              } else {
+                showToast('Запись 3 секунд вебки...', 'info');
+              }
+            }
+          });
+        }
       } else {
         showToast('Вебкамера разморожена', 'info');
       }
     });
   }
 
+  // Загрузка своего GIF/видео
   if (freezeGifBtn && freezeGifFile) {
     freezeGifBtn.addEventListener('click', () => {
       freezeGifFile.click();
@@ -176,9 +322,15 @@
         const dataUrl = reader.result;
         const name = file.name;
         if (chrome.storage && chrome.storage.local) {
-          chrome.storage.local.set({ freezeCamGif: dataUrl, freezeCamGifName: name });
+          chrome.storage.local.set({
+            freezeCamGif: dataUrl,
+            freezeCamGifName: name,
+            freezeCam: true,
+            freezeCamMode: 'loop',
+          });
         }
-        updateGifUI(name);
+        updateFreezeCamUI(true);
+        updateLoopUI(name, true);
         sendToContent({ type: 'SET_FREEZE_GIF', dataUrl }).catch(() => {});
         showToast(`GIF "${name}" загружен для трансляции`, 'success');
       };
@@ -190,11 +342,58 @@
     freezeGifClear.addEventListener('click', () => {
       if (chrome.storage && chrome.storage.local) {
         chrome.storage.local.remove(['freezeCamGif', 'freezeCamGifName']);
+        chrome.storage.local.get({ freezeCamHasSavedLoop: false }, (r) => {
+          updateLoopUI(null, r.freezeCamHasSavedLoop);
+        });
       }
       if (freezeGifFile) freezeGifFile.value = '';
-      updateGifUI(null);
       sendToContent({ type: 'SET_FREEZE_GIF', dataUrl: null }).catch(() => {});
-      showToast('Сброшено на живую зацикловку вебки', 'info');
+      showToast('Сброшено на сохранённую 3-сек запись', 'info');
+    });
+  }
+
+  // Загрузка своего Фото (JPG/PNG/WebP)
+  if (freezePhotoBtn && freezePhotoFile) {
+    freezePhotoBtn.addEventListener('click', () => {
+      freezePhotoFile.click();
+    });
+
+    freezePhotoFile.addEventListener('change', () => {
+      const file = freezePhotoFile.files && freezePhotoFile.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result;
+        const name = file.name;
+        if (chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({
+            freezeCamPhoto: dataUrl,
+            freezeCamPhotoName: name,
+            freezeCam: true,
+            freezeCamMode: 'photo',
+          });
+        }
+        updateFreezeCamUI(true);
+        updatePhotoUI(name, true);
+        sendToContent({ type: 'SET_FREEZE_PHOTO', dataUrl }).catch(() => {});
+        showToast(`Фото "${name}" загружено для трансляции`, 'success');
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  if (freezePhotoClear) {
+    freezePhotoClear.addEventListener('click', () => {
+      if (chrome.storage && chrome.storage.local) {
+        chrome.storage.local.remove(['freezeCamPhotoName']);
+        chrome.storage.local.get({ freezeCamPhoto: null }, (r) => {
+          updatePhotoUI(null, Boolean(r.freezeCamPhoto));
+        });
+      }
+      if (freezePhotoFile) freezePhotoFile.value = '';
+      sendToContent({ type: 'TAKE_FREEZE_PHOTO' }).catch(() => {});
+      showToast('Сброшено на снимок с вебки', 'info');
     });
   }
 

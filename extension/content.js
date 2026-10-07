@@ -133,9 +133,31 @@
       if (event.data.status === 'recording') {
         showFloatingToast(`⏺ Запись вебки: ${event.data.secondsLeft} сек...`, SVG_TOAST_FREEZE);
       } else if (event.data.status === 'done') {
-        showFloatingToast('✅ Вебкамера зациклена (3 сек пинг-понг)', SVG_TOAST_FREEZE);
+        showFloatingToast('✅ Вебкамера зациклена и сохранена (3 сек)', SVG_TOAST_FREEZE);
       } else if (event.data.status === 'waiting_camera') {
         showFloatingToast('Включите камеру в вебинаре для записи 3 сек', SVG_TOAST_FREEZE);
+      }
+    }
+    if (event.data.type === 'MAXITET_SAVE_LOOP_FRAMES' && Array.isArray(event.data.frames)) {
+      if (chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({
+          freezeCamLoopFrames: event.data.frames,
+          freezeCamHasSavedLoop: true,
+        });
+      }
+    }
+    if (event.data.type === 'MAXITET_PHOTO_STATUS') {
+      if (event.data.status === 'done') {
+        showFloatingToast('📸 Стоп-кадр вебки сохранён', SVG_TOAST_FREEZE);
+      } else if (event.data.status === 'waiting_camera') {
+        showFloatingToast('Включите камеру в вебинаре для снимка', SVG_TOAST_FREEZE);
+      }
+    }
+    if (event.data.type === 'MAXITET_SAVE_PHOTO' && event.data.dataUrl) {
+      if (chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({
+          freezeCamPhoto: event.data.dataUrl,
+        });
       }
     }
     if (event.data.type === 'MAXITET_FORWARD_HOTKEY') {
@@ -1215,8 +1237,30 @@
         break;
       }
 
+      case 'SET_FREEZE_MODE': {
+        window.postMessage({ type: 'MAXITET_SET_FREEZE_MODE', mode: message.mode }, '*');
+        showFloatingToast(
+          message.mode === 'photo' ? 'Режим заморозки: Фото (стоп-кадр)' : 'Режим заморозки: Анимация (3 сек)',
+          SVG_TOAST_FREEZE
+        );
+        sendResponse({ success: true });
+        break;
+      }
+
       case 'START_RECORD_FREEZE': {
         window.postMessage({ type: 'MAXITET_START_RECORD_FREEZE' }, '*');
+        sendResponse({ success: true });
+        break;
+      }
+
+      case 'TAKE_FREEZE_PHOTO': {
+        window.postMessage({ type: 'MAXITET_TAKE_FREEZE_PHOTO' }, '*');
+        sendResponse({ success: true });
+        break;
+      }
+
+      case 'SET_FREEZE_PHOTO': {
+        window.postMessage({ type: 'MAXITET_SET_FREEZE_PHOTO', dataUrl: message.dataUrl }, '*');
         sendResponse({ success: true });
         break;
       }
@@ -1315,32 +1359,37 @@
 
   syncStealthMode();
 
-  window.addEventListener('message', (event) => {
-    if (event.source !== window || !event.data) return;
-    if (event.data.type === 'MAXITET_SNAPSHOT_CAPTURED' && event.data.dataUrl) {
-      if (chrome.storage && chrome.storage.local) {
-        chrome.storage.local.set({ freezeCamSnapshot: event.data.dataUrl });
-      }
-    }
-  });
-
   function syncFreezeCam() {
     if (chrome.storage && chrome.storage.local) {
-      chrome.storage.local.get({ freezeCam: false, freezeCamGif: null, freezeCamSnapshot: null }, (res) => {
-        if (res.freezeCamGif) {
-          window.postMessage({ type: 'MAXITET_SET_FREEZE_GIF', dataUrl: res.freezeCamGif }, '*');
-        } else if (res.freezeCamSnapshot) {
-          window.postMessage({ type: 'MAXITET_RESTORE_SNAPSHOT', dataUrl: res.freezeCamSnapshot }, '*');
-        }
-        window.postMessage({ type: 'MAXITET_SET_FREEZE_CAM', enabled: res.freezeCam }, '*');
+      chrome.storage.local.get({
+        freezeCam: false,
+        freezeCamMode: 'loop',
+        freezeCamLoopFrames: null,
+        freezeCamPhoto: null,
+        freezeCamGif: null,
+      }, (res) => {
+        window.postMessage({
+          type: 'MAXITET_INIT_FREEZE_STATE',
+          enabled: res.freezeCam,
+          mode: res.freezeCamMode || 'loop',
+          loopFrames: res.freezeCamLoopFrames,
+          photoDataUrl: res.freezeCamPhoto,
+          customGifDataUrl: res.freezeCamGif,
+        }, '*');
       });
 
       chrome.storage.onChanged.addListener((changes) => {
         if (changes.freezeCam) {
           window.postMessage({ type: 'MAXITET_SET_FREEZE_CAM', enabled: changes.freezeCam.newValue }, '*');
         }
+        if (changes.freezeCamMode) {
+          window.postMessage({ type: 'MAXITET_SET_FREEZE_MODE', mode: changes.freezeCamMode.newValue }, '*');
+        }
         if (changes.freezeCamGif) {
           window.postMessage({ type: 'MAXITET_SET_FREEZE_GIF', dataUrl: changes.freezeCamGif.newValue }, '*');
+        }
+        if (changes.freezeCamPhoto) {
+          window.postMessage({ type: 'MAXITET_SET_FREEZE_PHOTO', dataUrl: changes.freezeCamPhoto.newValue }, '*');
         }
       });
     }
