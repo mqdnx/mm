@@ -1,0 +1,54 @@
+{
+  "manifest_version": 3,
+  "name": "Maxitet Master",
+  "version": "2.7.0",
+  "description": "Многофункциональный инструмент для М.Класс (vision.maximumtest.ru): PiP, отдельное окно, тёмная тема слайдов, режим невидимки и скачивание презентаций в PDF",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "unlimitedStorage",
+    "downloads",
+    "clipboardWrite"
+  ],
+  "host_permissions": [
+    "https://vision.maximumtest.ru/*",
+    "https://*.yandexcloud.net/*",
+    "*://*/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://vision.maximumtest.ru/*"],
+      "js": ["stealth.js"],
+      "world": "MAIN",
+      "all_frames": true,
+      "match_about_blank": true,
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://vision.maximumtest.ru/*"],
+      "js": ["content.js"],
+      "all_frames": true,
+      "match_about_blank": true,
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

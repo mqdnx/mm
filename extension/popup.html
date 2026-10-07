@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maxitet Master</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <svg class="logo" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/>
+        <path d="M22 10v6"/>
+        <path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/>
+      </svg>
+      <h1>Maxitet Master</h1>
+    </div>
+    <span class="version">v2.7.0</span>
+  </header>
+
+  <!-- Стелс-режим / Анти-детект -->
+  <div class="stealth-bar disabled">
+    <div class="bar-left">
+      <svg class="bar-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 10h.01"/><path d="M15 10h.01"/><path d="M12 2a8 8 0 0 0-8 8v12l3-3 2.5 2.5L12 19l2.5 2.5L17 19l3 3V10a8 8 0 0 0-8-8z"/>
+      </svg>
+      <div class="bar-title-wrap">
+        <span class="bar-title">Режим невидимки</span>
+        <span class="info-tooltip" data-tooltip="Сайт видит вкладку открытой и в фокусе (даже при F11)">
+          <svg class="info-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+          </svg>
+        </span>
+      </div>
+    </div>
+    <label class="switch" title="Включить/выключить подмену фокуса и видимости вкладки">
+      <input type="checkbox" id="stealth-toggle">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <!-- Предохранитель микрофона -->
+  <div class="mic-guard-bar">
+    <div class="bar-left">
+      <svg class="bar-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="2" y1="2" x2="22" y2="22"/><path d="M18.89 13.23A7.12 7.12 0 0 0 19 12v-2"/><path d="M5 10v2a7 7 0 0 0 12 5"/><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12"/><line x1="12" y1="19" x2="12" y2="22"/>
+      </svg>
+      <div class="bar-title-wrap">
+        <span class="bar-title">Предохранитель микрофона</span>
+        <span class="info-tooltip" data-tooltip="Микрофон намертво заблокирован от случайного включения на лекциях">
+          <svg class="info-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+          </svg>
+        </span>
+      </div>
+    </div>
+    <label class="switch" title="Включить/выключить блокировку микрофона">
+      <input type="checkbox" id="mic-guard-toggle" checked>
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <!-- Заморозка вебки (Freeze Cam / 3-сек пинг-понг) -->
+  <div class="freeze-cam-bar disabled">
+    <div class="bar-left">
+      <svg class="bar-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>
+      </svg>
+      <div class="bar-title-wrap">
+        <span class="bar-title">Заморозка вебки</span>
+        <span class="info-tooltip" data-tooltip="Записывает 3 сек с вебки и зацикливает пинг-понг (1 2 3 2 1), без рывков">
+          <svg class="info-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+          </svg>
+        </span>
+      </div>
+    </div>
+    <label class="switch" title="Включить/выключить зацикленную трансляцию 3 сек">
+      <input type="checkbox" id="freeze-cam-toggle">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <!-- Панель управления записью 3 сек и GIF -->
+  <div class="freeze-gif-panel">
+    <input type="file" id="freeze-gif-file" accept="image/gif,image/webp,video/mp4,video/webm" style="display: none;">
+    <div class="freeze-gif-status" id="freeze-gif-status">
+      <span class="freeze-gif-label" id="freeze-gif-label">Запись 3 сек (пинг-понг)</span>
+      <div class="freeze-gif-actions">
+        <button type="button" id="freeze-record-btn" class="freeze-gif-action-btn" title="Записать свежие 3 секунды прямо сейчас">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="#ff4d4f" stroke="#ff4d4f"><circle cx="12" cy="12" r="10"/></svg>
+          <span>Записать 3 сек</span>
+        </button>
+        <button type="button" id="freeze-gif-btn" class="freeze-gif-action-btn" title="Загрузить свой GIF-файл (опционально)">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span>Свой GIF</span>
+        </button>
+        <button type="button" id="freeze-gif-clear" class="freeze-gif-clear-btn" title="Сбросить файл и вернуться к записи 3 сек" style="display: none;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Режим Дзен -->
+  <div class="zen-bar disabled">
+    <div class="bar-left">
+      <svg class="bar-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+      </svg>
+      <div class="bar-title-wrap">
+        <span class="bar-title">Режим Дзен</span>
+        <span class="info-tooltip" data-tooltip="100% экран без мусора + боковой док стандартных кнопок (Z)">
+          <svg class="info-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+          </svg>
+        </span>
+      </div>
+    </div>
+    <label class="switch" title="Включить/выключить Режим Дзен (горячая клавиша Z)">
+      <input type="checkbox" id="zen-toggle">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <!-- Тёмная тема слайдов (Smart Dark Mode) -->
+  <div class="dark-mode-bar disabled">
+    <div class="bar-left">
+      <svg class="bar-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+      <div class="bar-title-wrap">
+        <span class="bar-title">Тёмная тема слайдов</span>
+        <span class="info-tooltip" data-tooltip="Мягкий тёмный режим для презентаций с сохранением цветов графиков (D)">
+          <svg class="info-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+          </svg>
+        </span>
+      </div>
+    </div>
+    <label class="switch" title="Включить/выключить тёмную тему презентаций (горячая клавиша D)">
+      <input type="checkbox" id="dark-mode-toggle">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <!-- Скачивание презентации в PDF и Скриншот -->
+  <div class="presentation-card">
+    <div class="presentation-header">
+      <div class="presentation-title">
+        <svg class="bar-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/>
+        </svg>
+        <span>Презентация урока</span>
+        <span class="info-tooltip" data-tooltip="Скачать все слайды лекции в единый PDF или скопировать кадр в буфер (S)">
+          <svg class="info-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+          </svg>
+        </span>
+      </div>
+    </div>
+    <div class="presentation-actions">
+      <button id="download-pdf-btn" class="btn btn-download" title="Найти все слайды и собрать их в единый PDF-документ">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+        </svg>
+        <span>Скачать PDF</span>
+      </button>
+      <button id="quick-screenshot-btn" class="btn btn-screenshot-quick" title="Скопировать текущий слайд презентации в буфер обмена (горячая клавиша S)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+        <span>Снимок</span>
+      </button>
+    </div>
+    <div id="pdf-progress-container" style="display: none;">
+      <div id="pdf-progress-bar">
+        <div id="pdf-progress-fill">0%</div>
+      </div>
+      <div id="pdf-progress-text">Поиск страниц…</div>
+    </div>
+    <div id="pdf-status" style="display: none;"></div>
+  </div>
+
+  <div class="section-title">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+    </svg>
+    <span>Видеопотоки занятия</span>
+  </div>
+
+  <main id="video-list">
+    <div id="loading" class="state-message">
+      <div class="spinner"></div>
+      <span>Поиск видео на странице…</span>
+    </div>
+  </main>
+
+  <div id="no-videos" class="state-message" style="display: none;">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.5">
+      <rect x="2" y="4" width="20" height="16" rx="2"/>
+      <line x1="9" y1="9" x2="15" y2="15" stroke-width="2"/>
+      <line x1="15" y1="9" x2="9" y2="15" stroke-width="2"/>
+    </svg>
+    <p>Видео не найдено</p>
+    <p class="hint">Откройте урок на vision.maximumtest.ru</p>
+  </div>
+
+  <div id="error-state" class="state-message" style="display: none;">
+    <p class="error-text"></p>
+    <p class="hint">Убедитесь, что страница занятия загружена полностью</p>
+  </div>
+
+  <script src="js/jspdf.umd.min.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
