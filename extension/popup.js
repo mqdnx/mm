@@ -480,21 +480,34 @@
 
   const darkModeToggle = document.getElementById('dark-mode-toggle');
   const darkModeBar = document.querySelector('.dark-mode-bar');
+  const presetChips = document.querySelectorAll('.preset-chip');
+  let currentDarkPreset = 'maxitet';
 
   function updateDarkModeUI(enabled) {
     if (darkModeToggle) darkModeToggle.checked = enabled;
     if (darkModeBar) darkModeBar.classList.toggle('disabled', !enabled);
   }
 
+  function updatePresetUI(preset) {
+    currentDarkPreset = preset || 'maxitet';
+    presetChips.forEach((chip) => {
+      chip.classList.toggle('active', chip.dataset.preset === currentDarkPreset);
+    });
+  }
+
   if (chrome.storage && chrome.storage.local) {
-    chrome.storage.local.get({ smartDarkMode: false }, (res) => {
+    chrome.storage.local.get({ smartDarkMode: false, smartDarkPreset: 'maxitet' }, (res) => {
       updateDarkModeUI(res.smartDarkMode);
+      updatePresetUI(res.smartDarkPreset);
     });
   }
 
   sendToContent({ type: 'GET_SMART_DARK_MODE' }).then((res) => {
     if (res && typeof res.isSmartDarkMode === 'boolean') {
       updateDarkModeUI(res.isSmartDarkMode);
+    }
+    if (res && res.preset) {
+      updatePresetUI(res.preset);
     }
   }).catch(() => {});
 
@@ -505,13 +518,35 @@
       if (chrome.storage && chrome.storage.local) {
         chrome.storage.local.set({ smartDarkMode: enabled });
       }
-      sendToContent({ type: 'SET_SMART_DARK_MODE', enabled }).catch(() => {});
+      sendToContent({ type: 'SET_SMART_DARK_MODE', enabled, preset: currentDarkPreset }).catch(() => {});
       showToast(
         enabled ? 'Тёмная тема слайдов включена (D)' : 'Тёмная тема слайдов выключена',
         enabled ? 'success' : 'info'
       );
     });
   }
+
+  presetChips.forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const preset = chip.dataset.preset;
+      updatePresetUI(preset);
+      if (chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ smartDarkPreset: preset });
+      }
+      if (darkModeToggle && !darkModeToggle.checked) {
+        darkModeToggle.checked = true;
+        updateDarkModeUI(true);
+        if (chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ smartDarkMode: true });
+        }
+        sendToContent({ type: 'SET_SMART_DARK_MODE', enabled: true, preset }).catch(() => {});
+      } else {
+        sendToContent({ type: 'SET_SMART_DARK_PRESET', preset }).catch(() => {});
+      }
+      const chipTitle = chip.querySelector('.chip-name')?.textContent || preset;
+      showToast(`Пресет: ${chipTitle}`, 'success');
+    });
+  });
 
   // ─── Vector SVG Icons ─────────────────────────────────────
 

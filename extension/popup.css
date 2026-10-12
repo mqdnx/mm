@@ -340,6 +340,77 @@ h1 {
   filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.45));
 }
 
+/* ─── Подпанель пресетов тёмной темы слайдов ─── */
+.dark-presets-subpanel {
+  margin: -2px 12px 6px 12px;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 9px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  transition: all 0.22s ease;
+}
+
+.dark-mode-bar.disabled + .dark-presets-subpanel {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.dark-presets-subpanel .preset-chips {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+}
+
+.preset-chip {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.25);
+  color: #9ca3af;
+  font-size: 10.5px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.preset-chip:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+
+.preset-chip.active {
+  background: rgba(251, 191, 36, 0.16);
+  border-color: rgba(251, 191, 36, 0.4);
+  color: #fbbf24;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.preset-chip .chip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.preset-chip .chip-icon svg {
+  stroke: currentColor;
+}
+
+.preset-chip .chip-name {
+  line-height: 1;
+}
+
 .bar-title-wrap {
   display: flex;
   align-items: center;

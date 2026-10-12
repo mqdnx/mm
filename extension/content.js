@@ -59,7 +59,75 @@
   let activeVideoIndex = -1;     // number | 'presentation'
   let activeViewerUpdateDarkMode = () => {};
   let isSmartDarkModeActive = false;
+  let currentSmartDarkPreset = 'maxitet';
   let handleKeyDown = null;
+
+  const SMART_DARK_PRESETS = {
+    maxitet: {
+      id: 'maxitet',
+      name: 'Maxitet',
+      title: 'Фирменный Maxitet',
+      filter: 'url(#maxitet-dark-maxitet)',
+      bgColor: '#0f1015'
+    },
+    contrast: {
+      id: 'contrast',
+      name: 'Контраст',
+      title: 'Глубокий чёрный',
+      filter: 'url(#maxitet-dark-contrast)',
+      bgColor: '#000000'
+    },
+    soft: {
+      id: 'soft',
+      name: 'Мягкий',
+      title: 'Мягкий тёмный',
+      filter: 'url(#maxitet-dark-soft)',
+      bgColor: '#181b22'
+    },
+    invert: {
+      id: 'invert',
+      name: 'Инверсия',
+      title: 'Классический негатив',
+      filter: 'invert(0.9) hue-rotate(180deg) contrast(1.1) brightness(0.95)',
+      bgColor: '#0c0c10'
+    }
+  };
+
+  function injectSvgFilters(targetDoc = document) {
+    if (!targetDoc) return;
+    if (targetDoc.getElementById('maxitet-dark-filters')) return;
+    const svg = targetDoc.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.id = 'maxitet-dark-filters';
+    svg.setAttribute('style', 'position: absolute; width: 0; height: 0; pointer-events: none; overflow: hidden;');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.innerHTML = `
+      <defs>
+        <filter id="maxitet-dark-maxitet" color-interpolation-filters="sRGB">
+          <feColorMatrix type="matrix" values="
+            -0.1142  0.0523 -0.8181 0 0.9400
+            -2.1488  1.8963 -0.6275 0 0.9400
+            -1.1229 -0.0009  0.2638 0 0.9400
+            0        0       0       1 0" />
+        </filter>
+        <filter id="maxitet-dark-contrast" color-interpolation-filters="sRGB">
+          <feColorMatrix type="matrix" values="
+            -0.3258  0.2277 -0.9019 0 1.0000
+            -2.3363  2.0177 -0.6814 0 1.0000
+            -1.5245  0.2381  0.2864 0 1.0000
+            0        0       0       1 0" />
+        </filter>
+        <filter id="maxitet-dark-soft" color-interpolation-filters="sRGB">
+          <feColorMatrix type="matrix" values="
+            -0.1442  0.0471 -0.6529 0 0.8500
+            -1.8900  1.6126 -0.4726 0 0.8600
+            -0.8919 -0.0194  0.1713 0 0.8800
+            0        0       0       1 0" />
+        </filter>
+      </defs>
+    `;
+    const root = targetDoc.body || targetDoc.documentElement;
+    if (root) root.appendChild(svg);
+  }
 
   // View state (в координатах видео / слайда)
   const view = {
@@ -131,9 +199,9 @@
     }
     if (event.data.type === 'MAXITET_RECORD_STATUS') {
       if (event.data.status === 'recording') {
-        showFloatingToast(`⏺ Запись вебки: ${event.data.secondsLeft} сек...`, SVG_TOAST_FREEZE);
+        showFloatingToast(`Запись вебки: ${event.data.secondsLeft} сек...`, SVG_TOAST_FREEZE);
       } else if (event.data.status === 'done') {
-        showFloatingToast('✅ Вебкамера зациклена и сохранена (3 сек)', SVG_TOAST_FREEZE);
+        showFloatingToast('Вебкамера зациклена и сохранена (3 сек)', SVG_TOAST_FREEZE);
       } else if (event.data.status === 'waiting_camera') {
         showFloatingToast('Включите камеру в вебинаре для записи 3 сек', SVG_TOAST_FREEZE);
       }
@@ -148,7 +216,7 @@
     }
     if (event.data.type === 'MAXITET_PHOTO_STATUS') {
       if (event.data.status === 'done') {
-        showFloatingToast('📸 Стоп-кадр вебки сохранён', SVG_TOAST_FREEZE);
+        showFloatingToast('Стоп-кадр вебки сохранён', SVG_TOAST_FREEZE);
       } else if (event.data.status === 'waiting_camera') {
         showFloatingToast('Включите камеру в вебинаре для снимка', SVG_TOAST_FREEZE);
       }
@@ -524,6 +592,7 @@
 
   function setupViewer(win, sourceMedia, isPiP) {
     const doc = win.document;
+    injectSvgFilters(doc);
 
     // Стили
     const style = doc.createElement('style');
@@ -584,7 +653,11 @@
         transition: opacity 0.2s ease, transform 0.2s ease;
         z-index: 100;
         pointer-events: none;
+        max-width: calc(100% - 20px);
+        overflow-x: auto;
+        scrollbar-width: none;
       }
+      #toolbar::-webkit-scrollbar { display: none; }
       body:hover #toolbar, body.toolbar-pinned #toolbar {
         opacity: 1;
         pointer-events: auto;
@@ -687,16 +760,26 @@
 
         <div id="toolbar">
           <button id="btn-crop" class="btn" title="Выделить прямоугольником нужную область кадра">
-            ✂️ Выделить область
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg>
+            <span>Область</span>
           </button>
           <div class="separator"></div>
-          <button id="btn-zoom-out" class="btn btn-icon" title="Отдалить (−)">−</button>
+          <button id="btn-zoom-out" class="btn btn-icon" title="Отдалить (−) [шаг 1%, Shift — 5%]">−</button>
           <span id="zoom-label" class="zoom-indicator">100%</span>
-          <button id="btn-zoom-in" class="btn btn-icon" title="Приблизить (+)">+</button>
-          <button id="btn-reset" class="btn btn-icon" title="Сбросить масштаб и кроп">↩</button>
+          <button id="btn-zoom-in" class="btn btn-icon" title="Приблизить (+) [шаг 1%, Shift — 5%]">+</button>
+          <button id="btn-reset" class="btn btn-icon" title="Сбросить масштаб и кроп">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          </button>
           <div class="separator"></div>
-          <button id="btn-dark-mode" class="btn btn-icon" title="Тёмная тема слайдов (D)">🌙</button>
-          <button id="btn-screenshot" class="btn btn-icon" title="Сделать скриншот в буфер обмена (S)">📷</button>
+          <button id="btn-fit-mode" class="btn btn-icon active" title="Режим: Без чёрных полос (Заполнение окна) [F]">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>
+          </button>
+          <button id="btn-dark-mode" class="btn btn-icon" title="Тёмная тема слайдов (D)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+          </button>
+          <button id="btn-screenshot" class="btn btn-icon" title="Сделать скриншот в буфер обмена (S)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          </button>
         </div>
       </div>
     `;
@@ -758,9 +841,71 @@
       };
     }
 
+    let fitMode = 'cover'; // 'cover' (без чёрных полос, заполняет всё окно) | 'contain' (с полосами, весь кадр)
+
+    function getBaseCropDims(vw, vh, winW, winH, mode) {
+      if (mode === 'contain') {
+        return { w: vw, h: vh };
+      }
+      const winAspect = winW / winH;
+      const mediaAspect = vw / vh;
+      if (winAspect < mediaAspect) {
+        // Окно более вертикальное/узкое, чем видео (например, 9:16 окно на 16:9 видео)
+        return { w: Math.round(vh * winAspect), h: vh };
+      } else {
+        // Окно шире, чем видео (например, 21:9 окно на 16:9 видео)
+        return { w: vw, h: Math.round(vw / winAspect) };
+      }
+    }
+
+    function resetView() {
+      const dims = getCurrentMediaDims();
+      const vw = dims.w;
+      const vh = dims.h;
+      const winW = win.innerWidth;
+      const winH = win.innerHeight;
+
+      view.zoom = 1;
+      const base = getBaseCropDims(vw, vh, winW, winH, fitMode);
+      view.cropW = base.w;
+      view.cropH = base.h;
+      view.cropX = Math.max(0, Math.round((vw - base.w) / 2));
+      view.cropY = Math.max(0, Math.round((vh - base.h) / 2));
+    }
+
+    function syncCropToWindow() {
+      const dims = getCurrentMediaDims();
+      const vw = dims.w;
+      const vh = dims.h;
+      const winW = win.innerWidth;
+      const winH = win.innerHeight;
+      if (winW <= 0 || winH <= 0 || vw <= 0 || vh <= 0) return;
+
+      const base = getBaseCropDims(vw, vh, winW, winH, fitMode);
+      const currentCenterX = view.cropW > 0 ? (view.cropX + view.cropW / 2) : (vw / 2);
+      const currentCenterY = view.cropH > 0 ? (view.cropY + view.cropH / 2) : (vh / 2);
+
+      const newCropW = Math.min(vw, Math.max(20, Math.round(base.w / view.zoom)));
+      const newCropH = Math.min(vh, Math.max(20, Math.round(base.h / view.zoom)));
+
+      const maxCropX = Math.max(0, vw - newCropW);
+      const maxCropY = Math.max(0, vh - newCropH);
+
+      view.cropW = newCropW;
+      view.cropH = newCropH;
+      view.cropX = Math.max(0, Math.min(maxCropX, Math.round(currentCenterX - newCropW / 2)));
+      view.cropY = Math.max(0, Math.min(maxCropY, Math.round(currentCenterY - newCropH / 2)));
+      updateZoomUI();
+    }
+
+    function canPanNow() {
+      const dims = getCurrentMediaDims();
+      return !isCropMode && (view.zoom > 1 || (dims.w - view.cropW) > 1 || (dims.h - view.cropH) > 1);
+    }
+
     function updateZoomUI() {
       zoomLabel.textContent = `${Math.round(view.zoom * 100)}%`;
-      canvas.classList.toggle('can-drag', view.zoom > 1 && !isCropMode);
+      canvas.classList.toggle('can-drag', canPanNow());
     }
 
     // ─── Рендеринг ──────────────────────────────────────────
@@ -782,15 +927,20 @@
         canvas.height = winH;
       }
 
-      ctx.fillStyle = '#0d0d12';
+      const presetCfg = SMART_DARK_PRESETS[currentSmartDarkPreset] || SMART_DARK_PRESETS.maxitet;
+      ctx.fillStyle = isSmartDarkModeActive && sourceMedia.type === 'presentation'
+        ? presetCfg.bgColor
+        : '#0d0d12';
       ctx.fillRect(0, 0, winW, winH);
 
       if (view.cropW === 0 || view.cropH === 0) {
-        view.cropW = vw;
-        view.cropH = vh;
+        resetView();
       }
 
-      const scale = Math.min(winW / view.cropW, winH / view.cropH);
+      const scale = fitMode === 'cover'
+        ? Math.max(winW / view.cropW, winH / view.cropH)
+        : Math.min(winW / view.cropW, winH / view.cropH);
+
       const dw = view.cropW * scale;
       const dh = view.cropH * scale;
       const dx = (winW - dw) / 2;
@@ -801,10 +951,11 @@
       if (sourceMedia.type === 'presentation') {
         const currentImg = getActivePresentationElement() || sourceMedia.element;
         if (isSmartDarkModeActive) {
-          ctx.filter = 'invert(0.9) hue-rotate(180deg) contrast(1.1) brightness(0.95)';
+          canvas.style.filter = presetCfg.filter;
         } else {
-          ctx.filter = 'none';
+          canvas.style.filter = 'none';
         }
+        ctx.filter = 'none';
         try {
           ctx.drawImage(
             currentImg,
@@ -825,8 +976,9 @@
             );
           }
         } catch (e) {}
-        ctx.filter = 'none';
       } else {
+        canvas.style.filter = 'none';
+        ctx.filter = 'none';
         const v = videoToRender || sourceMedia.element;
         try {
           ctx.drawImage(
@@ -841,43 +993,54 @@
       renderFrameId = win.requestAnimationFrame(render);
     }
 
+    resetView();
     render();
 
     win.addEventListener('resize', () => {
+      syncCropToWindow();
       render();
     });
 
-    // ─── Зум в точку курсора ───────────────────────────────
+    // ─── Зум в точку курсора (шаг 1%) ───────────────────────
 
-    function zoomAtPoint(clientX, clientY, factor) {
+    function zoomAtPoint(clientX, clientY, targetZoomOrFactor, isFactor = false) {
       const dims = getCurrentMediaDims();
       const vw = dims.w;
       const vh = dims.h;
+      const winW = win.innerWidth;
+      const winH = win.innerHeight;
 
       const relX = clientX - lastDraw.dx;
       const relY = clientY - lastDraw.dy;
 
-      const normX = Math.max(0, Math.min(1, relX / lastDraw.dw));
-      const normY = Math.max(0, Math.min(1, relY / lastDraw.dy));
+      const normX = lastDraw.dw > 0 ? Math.max(0, Math.min(1, relX / lastDraw.dw)) : 0.5;
+      const normY = lastDraw.dh > 0 ? Math.max(0, Math.min(1, relY / lastDraw.dh)) : 0.5;
 
       const videoX = view.cropX + normX * view.cropW;
       const videoY = view.cropY + normY * view.cropH;
 
-      const newZoom = Math.max(1, Math.min(10, view.zoom * factor));
-      if (newZoom === 1) {
+      let newZoom = isFactor ? (view.zoom * targetZoomOrFactor) : targetZoomOrFactor;
+      newZoom = Math.round(newZoom * 100) / 100;
+      newZoom = Math.max(1, Math.min(10, newZoom));
+
+      if (newZoom <= 1 && fitMode === 'contain') {
         resetView();
         updateZoomUI();
         return;
       }
 
-      const newCropW = vw / newZoom;
-      const newCropH = vh / newZoom;
+      const base = getBaseCropDims(vw, vh, winW, winH, fitMode);
+      const newCropW = Math.min(vw, Math.max(20, Math.round(base.w / newZoom)));
+      const newCropH = Math.min(vh, Math.max(20, Math.round(base.h / newZoom)));
 
-      let newCropX = videoX - normX * newCropW;
-      let newCropY = videoY - normY * newCropH;
+      let newCropX = Math.round(videoX - normX * newCropW);
+      let newCropY = Math.round(videoY - normY * newCropH);
 
-      newCropX = Math.max(0, Math.min(vw - newCropW, newCropX));
-      newCropY = Math.max(0, Math.min(vh - newCropH, newCropY));
+      const maxCropX = Math.max(0, vw - newCropW);
+      const maxCropY = Math.max(0, vh - newCropH);
+
+      newCropX = Math.max(0, Math.min(maxCropX, newCropX));
+      newCropY = Math.max(0, Math.min(maxCropY, newCropY));
 
       view.zoom = newZoom;
       view.cropW = newCropW;
@@ -888,13 +1051,14 @@
       updateZoomUI();
     }
 
-    // ─── Колёсико мыши — зум в курсор ──────────────────────
+    // ─── Колёсико мыши — зум в курсор (шаг 1%, Shift — 5%) ───
 
     canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
       if (isCropMode) return;
-      const factor = e.deltaY < 0 ? 1.15 : 0.87;
-      zoomAtPoint(e.clientX, e.clientY, factor);
+      const step = e.shiftKey ? 0.05 : 0.01;
+      const targetZoom = e.deltaY < 0 ? (view.zoom + step) : (view.zoom - step);
+      zoomAtPoint(e.clientX, e.clientY, targetZoom, false);
     }, { passive: false });
 
     // ─── Перетаскивание кадра / Выделение рамки ────────────
@@ -912,7 +1076,7 @@
         return;
       }
 
-      if (view.zoom > 1 && e.button === 0) {
+      if (canPanNow() && e.button === 0) {
         isDragging = true;
         dragStartX = e.clientX;
         dragStartY = e.clientY;
@@ -989,6 +1153,8 @@
       const dims = getCurrentMediaDims();
       const vw = dims.w;
       const vh = dims.h;
+      const winW = win.innerWidth;
+      const winH = win.innerHeight;
 
       const normLeft = Math.max(0, (boxLeft - lastDraw.dx) / lastDraw.dw);
       const normTop = Math.max(0, (boxTop - lastDraw.dy) / lastDraw.dh);
@@ -1002,21 +1168,49 @@
       const targetW = normW * view.cropW;
       const targetH = normH * view.cropH;
 
-      const zoomX = vw / targetW;
-      const zoomY = vh / targetH;
-      const newZoom = Math.min(10, Math.max(1, Math.min(zoomX, zoomY)));
+      const base = getBaseCropDims(vw, vh, winW, winH, fitMode);
+      const winAspect = winW / winH;
 
-      const finalCropW = vw / newZoom;
-      const finalCropH = vh / newZoom;
+      let finalCropW, finalCropH;
+      if (fitMode === 'cover') {
+        const selAspect = targetW / targetH;
+        if (selAspect > winAspect) {
+          finalCropW = targetW;
+          finalCropH = targetW / winAspect;
+        } else {
+          finalCropH = targetH;
+          finalCropW = targetH * winAspect;
+        }
+      } else {
+        const zoomX = vw / targetW;
+        const zoomY = vh / targetH;
+        const newZoom = Math.min(10, Math.max(1, Math.min(zoomX, zoomY)));
+        finalCropW = vw / newZoom;
+        finalCropH = vh / newZoom;
+      }
+
+      if (finalCropW > vw) {
+        finalCropW = vw;
+        finalCropH = fitMode === 'cover' ? vw / winAspect : vh;
+      }
+      if (finalCropH > vh) {
+        finalCropH = vh;
+        finalCropW = fitMode === 'cover' ? vh * winAspect : vw;
+      }
+
+      finalCropW = Math.round(finalCropW);
+      finalCropH = Math.round(finalCropH);
 
       const centerTargetX = targetX + targetW / 2;
       const centerTargetY = targetY + targetH / 2;
 
-      let finalCropX = centerTargetX - finalCropW / 2;
-      let finalCropY = centerTargetY - finalCropH / 2;
+      let finalCropX = Math.round(centerTargetX - finalCropW / 2);
+      let finalCropY = Math.round(centerTargetY - finalCropH / 2);
 
       finalCropX = Math.max(0, Math.min(vw - finalCropW, finalCropX));
       finalCropY = Math.max(0, Math.min(vh - finalCropH, finalCropY));
+
+      const newZoom = Math.min(10, Math.max(1, Math.round((base.w / finalCropW) * 100) / 100));
 
       view.zoom = newZoom;
       view.cropW = finalCropW;
@@ -1032,19 +1226,21 @@
       btnCrop.classList.toggle('active', enabled);
       cropHint.style.display = enabled ? 'block' : 'none';
       canvas.classList.toggle('crop-mode', enabled);
-      canvas.classList.toggle('can-drag', view.zoom > 1 && !enabled);
+      canvas.classList.toggle('can-drag', canPanNow() && !enabled);
     }
 
     btnCrop.addEventListener('click', () => {
       setCropMode(!isCropMode);
     });
 
-    btnZoomIn.addEventListener('click', () => {
-      zoomAtPoint(win.innerWidth / 2, win.innerHeight / 2, 1.25);
+    btnZoomIn.addEventListener('click', (e) => {
+      const step = e.shiftKey ? 0.05 : 0.01;
+      zoomAtPoint(win.innerWidth / 2, win.innerHeight / 2, view.zoom + step, false);
     });
 
-    btnZoomOut.addEventListener('click', () => {
-      zoomAtPoint(win.innerWidth / 2, win.innerHeight / 2, 0.8);
+    btnZoomOut.addEventListener('click', (e) => {
+      const step = e.shiftKey ? 0.05 : 0.01;
+      zoomAtPoint(win.innerWidth / 2, win.innerHeight / 2, view.zoom - step, false);
     });
 
     btnReset.addEventListener('click', () => {
@@ -1151,10 +1347,18 @@
 
     function updateViewerDarkMode() {
       const btnDark = doc.getElementById('btn-dark-mode');
+      const cfg = SMART_DARK_PRESETS[currentSmartDarkPreset] || SMART_DARK_PRESETS.maxitet;
       if (btnDark) {
-        btnDark.textContent = isSmartDarkModeActive ? '☀️' : '🌙';
-        btnDark.title = isSmartDarkModeActive ? 'Светлая тема слайдов (D)' : 'Тёмная тема слайдов (D)';
+        btnDark.innerHTML = isSmartDarkModeActive
+          ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`
+          : `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`;
+        btnDark.title = isSmartDarkModeActive
+          ? `Светлая тема слайдов (D) [Пресет: ${cfg.name}, Shift+D: сменить]`
+          : `Тёмная тема слайдов (D) [Пресет: ${cfg.name}]`;
         btnDark.style.color = isSmartDarkModeActive ? '#fbbf24' : '';
+      }
+      if (sourceMedia.type === 'presentation') {
+        canvas.style.filter = isSmartDarkModeActive ? cfg.filter : 'none';
       }
     }
     activeViewerUpdateDarkMode = updateViewerDarkMode;
@@ -1162,8 +1366,44 @@
 
     const btnDarkMode = doc.getElementById('btn-dark-mode');
     if (btnDarkMode) {
-      btnDarkMode.addEventListener('click', () => {
-        setSmartDarkMode(!isSmartDarkModeActive);
+      btnDarkMode.addEventListener('click', (e) => {
+        if (e.shiftKey) {
+          cycleSmartDarkPreset();
+        } else {
+          setSmartDarkMode(!isSmartDarkModeActive);
+        }
+      });
+      btnDarkMode.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        cycleSmartDarkPreset();
+      });
+    }
+
+    const btnFitMode = doc.getElementById('btn-fit-mode');
+    function updateFitModeUI() {
+      if (!btnFitMode) return;
+      if (fitMode === 'cover') {
+        btnFitMode.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>`;
+        btnFitMode.title = 'Режим: Без чёрных полос (Заполнение окна) [F]';
+        btnFitMode.classList.add('active');
+      } else {
+        btnFitMode.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>`;
+        btnFitMode.title = 'Режим: С полосами (Вписать целиком) [F]';
+        btnFitMode.classList.remove('active');
+      }
+    }
+    updateFitModeUI();
+
+    function setFitMode(mode) {
+      fitMode = mode;
+      updateFitModeUI();
+      syncCropToWindow();
+      showWinToast(fitMode === 'cover' ? 'Режим: Без чёрных полос (Заполнение)' : 'Режим: С полосами (Вписать целиком)');
+    }
+
+    if (btnFitMode) {
+      btnFitMode.addEventListener('click', () => {
+        setFitMode(fitMode === 'cover' ? 'contain' : 'cover');
       });
     }
 
@@ -1177,7 +1417,23 @@
       if (e.key === 's' || e.key === 'S' || e.key === 'ы' || e.key === 'Ы') {
         takeScreenshot();
       } else if (e.key === 'd' || e.key === 'D' || e.key === 'в' || e.key === 'В') {
-        setSmartDarkMode(!isSmartDarkModeActive);
+        if (e.shiftKey) {
+          cycleSmartDarkPreset();
+        } else {
+          setSmartDarkMode(!isSmartDarkModeActive);
+        }
+      } else if (e.key === 'f' || e.key === 'F' || e.key === 'а' || e.key === 'А') {
+        setFitMode(fitMode === 'cover' ? 'contain' : 'cover');
+      } else if (e.key === '+' || e.key === '=' || e.key === 'Add') {
+        const step = e.shiftKey ? 0.05 : 0.01;
+        zoomAtPoint(win.innerWidth / 2, win.innerHeight / 2, view.zoom + step, false);
+      } else if (e.key === '-' || e.key === '_' || e.key === 'Subtract') {
+        const step = e.shiftKey ? 0.05 : 0.01;
+        zoomAtPoint(win.innerWidth / 2, win.innerHeight / 2, view.zoom - step, false);
+      } else if (e.key === '0') {
+        resetView();
+        setCropMode(false);
+        updateZoomUI();
       }
     });
   }
@@ -1292,13 +1548,22 @@
       }
 
       case 'SET_SMART_DARK_MODE': {
+        if (message.preset) {
+          setSmartDarkPreset(message.preset, false);
+        }
         setSmartDarkMode(Boolean(message.enabled), false);
-        sendResponse({ success: true, isSmartDarkMode: isSmartDarkModeActive });
+        sendResponse({ success: true, isSmartDarkMode: isSmartDarkModeActive, preset: currentSmartDarkPreset });
         break;
       }
 
       case 'GET_SMART_DARK_MODE': {
-        sendResponse({ isSmartDarkMode: isSmartDarkModeActive });
+        sendResponse({ isSmartDarkMode: isSmartDarkModeActive, preset: currentSmartDarkPreset });
+        break;
+      }
+
+      case 'SET_SMART_DARK_PRESET': {
+        setSmartDarkPreset(message.preset, true);
+        sendResponse({ success: true, isSmartDarkMode: isSmartDarkModeActive, preset: currentSmartDarkPreset });
         break;
       }
 
@@ -1619,9 +1884,17 @@
   const SVG_DOCK_MOON = SVG_TOAST_MOON;
   const SVG_DOCK_SUN = SVG_TOAST_SUN;
 
+  function applySmartDarkDOMState() {
+    injectSvgFilters(document);
+    document.body.classList.toggle('maxitet-smart-dark', isSmartDarkModeActive);
+    document.body.setAttribute('data-smart-dark-preset', currentSmartDarkPreset);
+    const presetCfg = SMART_DARK_PRESETS[currentSmartDarkPreset] || SMART_DARK_PRESETS.maxitet;
+    document.body.style.setProperty('--maxitet-dark-bg', presetCfg.bgColor);
+  }
+
   function setSmartDarkMode(enabled, showToastNotice = true) {
     isSmartDarkModeActive = Boolean(enabled);
-    document.body.classList.toggle('maxitet-smart-dark', isSmartDarkModeActive);
+    applySmartDarkDOMState();
 
     if (chrome.storage && chrome.storage.local) {
       chrome.storage.local.set({ smartDarkMode: isSmartDarkModeActive });
@@ -1633,11 +1906,46 @@
     }
 
     if (showToastNotice) {
+      const presetCfg = SMART_DARK_PRESETS[currentSmartDarkPreset] || SMART_DARK_PRESETS.maxitet;
       showFloatingToast(
-        isSmartDarkModeActive ? 'Тёмная тема слайдов: ВКЛ (D)' : 'Тёмная тема слайдов: ВЫКЛ (D)',
+        isSmartDarkModeActive
+          ? `Тёмная тема (${presetCfg.name}): ВКЛ (D)`
+          : 'Тёмная тема слайдов: ВЫКЛ (D)',
         isSmartDarkModeActive ? SVG_TOAST_MOON : SVG_TOAST_SUN
       );
     }
+  }
+
+  function setSmartDarkPreset(preset, showToastNotice = true) {
+    if (!SMART_DARK_PRESETS[preset]) preset = 'maxitet';
+    currentSmartDarkPreset = preset;
+    applySmartDarkDOMState();
+
+    if (chrome.storage && chrome.storage.local) {
+      chrome.storage.local.set({ smartDarkPreset: currentSmartDarkPreset });
+    }
+
+    if (typeof activeViewerUpdateDarkMode === 'function') {
+      activeViewerUpdateDarkMode();
+    }
+
+    if (showToastNotice && isSmartDarkModeActive) {
+      const cfg = SMART_DARK_PRESETS[preset];
+      showFloatingToast(
+        `Пресет слайдов: ${cfg.title || cfg.name}`,
+        SVG_TOAST_MOON
+      );
+    }
+  }
+
+  function cycleSmartDarkPreset() {
+    const keys = Object.keys(SMART_DARK_PRESETS);
+    const curIdx = keys.indexOf(currentSmartDarkPreset);
+    const nextPreset = keys[(curIdx + 1) % keys.length];
+    if (!isSmartDarkModeActive) {
+      setSmartDarkMode(true, false);
+    }
+    setSmartDarkPreset(nextPreset, true);
   }
 
   // ─── Zen Mode (Режим Дзен) ───────────────────────────────
@@ -1701,8 +2009,32 @@
       body.maxitet-smart-dark .viewer-main-img__img,
       body.maxitet-smart-dark .viewer img,
       body.maxitet-smart-dark #paint-frame {
-        filter: invert(0.9) hue-rotate(180deg) contrast(1.1) brightness(0.95) !important;
+        filter: url(#maxitet-dark-maxitet) !important;
         transition: filter 0.25s ease !important;
+      }
+
+      body.maxitet-smart-dark[data-smart-dark-preset="maxitet"] .viewer-main-img__img,
+      body.maxitet-smart-dark[data-smart-dark-preset="maxitet"] .viewer img,
+      body.maxitet-smart-dark[data-smart-dark-preset="maxitet"] #paint-frame {
+        filter: url(#maxitet-dark-maxitet) !important;
+      }
+
+      body.maxitet-smart-dark[data-smart-dark-preset="contrast"] .viewer-main-img__img,
+      body.maxitet-smart-dark[data-smart-dark-preset="contrast"] .viewer img,
+      body.maxitet-smart-dark[data-smart-dark-preset="contrast"] #paint-frame {
+        filter: url(#maxitet-dark-contrast) !important;
+      }
+
+      body.maxitet-smart-dark[data-smart-dark-preset="soft"] .viewer-main-img__img,
+      body.maxitet-smart-dark[data-smart-dark-preset="soft"] .viewer img,
+      body.maxitet-smart-dark[data-smart-dark-preset="soft"] #paint-frame {
+        filter: url(#maxitet-dark-soft) !important;
+      }
+
+      body.maxitet-smart-dark[data-smart-dark-preset="invert"] .viewer-main-img__img,
+      body.maxitet-smart-dark[data-smart-dark-preset="invert"] .viewer img,
+      body.maxitet-smart-dark[data-smart-dark-preset="invert"] #paint-frame {
+        filter: invert(0.9) hue-rotate(180deg) contrast(1.1) brightness(0.95) !important;
       }
 
       body.maxitet-smart-dark .sharing__viewer,
@@ -1710,7 +2042,7 @@
       body.maxitet-smart-dark .viewer-main-img,
       body.maxitet-smart-dark .sharing__inner,
       body.maxitet-smart-dark .viewer {
-        background-color: #0c0c10 !important;
+        background-color: var(--maxitet-dark-bg, #0f1015) !important;
       }
 
       .maxitet-dock-btn.is-active-dark {
@@ -2407,7 +2739,10 @@
     injectMessageActionButtons();
 
     if (chrome.storage && chrome.storage.local) {
-      chrome.storage.local.get({ zenMode: false, smartDarkMode: false }, (res) => {
+      chrome.storage.local.get({ zenMode: false, smartDarkMode: false, smartDarkPreset: 'maxitet' }, (res) => {
+        if (res.smartDarkPreset) {
+          currentSmartDarkPreset = res.smartDarkPreset;
+        }
         if (res.zenMode) {
           setZenMode(true);
         }
@@ -2481,7 +2816,11 @@
       } else if (code === 'KeyD' || key === 'd' || key === 'в') {
         if (typeof e.preventDefault === 'function') e.preventDefault();
         if (typeof e.stopPropagation === 'function') e.stopPropagation();
-        setSmartDarkMode(!isSmartDarkModeActive);
+        if (e.shiftKey) {
+          cycleSmartDarkPreset();
+        } else {
+          setSmartDarkMode(!isSmartDarkModeActive);
+        }
       } else if (code === 'KeyS' || key === 's' || key === 'ы') {
         if (typeof e.preventDefault === 'function') e.preventDefault();
         if (typeof e.stopPropagation === 'function') e.stopPropagation();
