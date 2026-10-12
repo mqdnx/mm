@@ -36,7 +36,7 @@
     },
     {
       "matches": ["https://vision.maximumtest.ru/*"],
-      "js": ["content.js"],
+      "js": ["js/jspdf.umd.min.js", "content.js"],
       "all_frames": true,
       "match_about_blank": true,
       "run_at": "document_idle"

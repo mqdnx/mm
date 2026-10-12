@@ -695,6 +695,40 @@
       const pinia = window.__pinia || appEl?.__vue_app__?.config?.globalProperties?.$pinia;
       if (pinia && pinia._s) {
         const store = pinia._s.get('presentations');
+        const lmsStore = pinia._s.get('lms');
+        const meetingStore = pinia._s.get('meeting');
+
+        let subject = '';
+        let lessonTitle = '';
+        let groupTitle = '';
+
+        if (lmsStore) {
+          const lesson = lmsStore.lessonLms;
+          if (lesson) {
+            lessonTitle = lesson.title || '';
+            if (Array.isArray(lesson.curriculumSubjects) && lesson.curriculumSubjects.length > 0) {
+              subject = lesson.curriculumSubjects.map(s => s.title || '').filter(Boolean).join(', ');
+            }
+            if (lesson.educationGroup && lesson.educationGroup.title) {
+              groupTitle = lesson.educationGroup.title;
+            }
+          }
+          if (!lessonTitle && lmsStore.lessonTitle) {
+            lessonTitle = lmsStore.lessonTitle;
+          }
+        }
+
+        let meetingTitle = '';
+        if (meetingStore && meetingStore.meeting) {
+          meetingTitle = meetingStore.meeting.title || meetingStore.meeting.name || meetingStore.meeting.topic || '';
+        }
+
+        let presFileName = '';
+        if (store && store.presentationFile) {
+          const file = store.presentationFile;
+          presFileName = file.filename || file.originalName || file.name || file.title || '';
+        }
+
         if (store) {
           const file = store.presentationFile;
           return {
@@ -703,6 +737,11 @@
             currentPage: Number(store.viewerPageNumber || 1),
             currentSrc: store.viewerSrcPage || null,
             isPresentationEnabled: Boolean(store.isPresentationEnabled),
+            subject,
+            lessonTitle,
+            groupTitle,
+            meetingTitle,
+            presFileName,
           };
         }
       }

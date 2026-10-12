@@ -571,6 +571,7 @@
 
   async function init() {
     showLoading();
+    syncPdfDownloadStatus();
 
     try {
       const response = await sendToContent({ type: 'GET_VIDEOS' });
@@ -700,191 +701,159 @@
     }
   }
 
-  // ─── Presentation PDF Downloader ──────────────────────────
+  // ─── Presentation PDF Downloader (Background Execution) ───
 
-  function updatePdfProgress(current, total) {
-    const percent = Math.round((current / total) * 100);
-    pdfProgressFill.style.width = `${percent}%`;
-    pdfProgressFill.textContent = `${percent}%`;
-    pdfProgressText.textContent = `Загрузка: ${current} из ${total} слайдов`;
+  const pdfSaveAsToggle = document.getElementById('pdf-save-as-toggle');
+  const pdfSubfolderInput = document.getElementById('pdf-subfolder-input');
+  const pdfSubfolderRow = document.getElementById('pdf-subfolder-row');
+
+  let pdfPollTimer = null;
+
+  function updateSaveAsUI(saveAs) {
+    if (pdfSaveAsToggle) pdfSaveAsToggle.checked = saveAs;
+    if (pdfSubfolderRow) {
+      pdfSubfolderRow.style.opacity = saveAs ? '0.45' : '1';
+      if (pdfSubfolderInput) pdfSubfolderInput.disabled = saveAs;
+    }
+  }
+
+  if (chrome.storage && chrome.storage.local) {
+    chrome.storage.local.get({ pdfSaveAs: false, pdfSubfolder: 'Maxitet' }, (res) => {
+      updateSaveAsUI(res.pdfSaveAs);
+      if (pdfSubfolderInput) pdfSubfolderInput.value = res.pdfSubfolder || 'Maxitet';
+    });
+  }
+
+  if (pdfSaveAsToggle) {
+    pdfSaveAsToggle.addEventListener('change', () => {
+      const val = pdfSaveAsToggle.checked;
+      updateSaveAsUI(val);
+      if (chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ pdfSaveAs: val });
+      }
+    });
+  }
+
+  if (pdfSubfolderInput) {
+    pdfSubfolderInput.addEventListener('change', () => {
+      const val = pdfSubfolderInput.value.trim();
+      if (chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ pdfSubfolder: val });
+      }
+    });
   }
 
   function showPdfStatus(text, type = '') {
+    if (!pdfStatus) return;
     pdfStatus.textContent = text;
     pdfStatus.style.display = 'block';
     pdfStatus.className = type;
   }
 
-  function blobToBase64(blob) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  }
+  async function syncPdfDownloadStatus() {
+    try {
+      const status = await sendToContent({ type: 'GET_PRESENTATION_DOWNLOAD_STATUS' }).catch(() => null);
+      if (!status) return;
 
-  function loadImage(src) {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = reject;
-      img.src = src;
-    });
+      const span = downloadBtn ? downloadBtn.querySelector('span') : null;
+
+      if (status.isDownloading) {
+        if (downloadBtn) downloadBtn.disabled = true;
+        if (span) span.textContent = 'Загрузка в фоне…';
+        if (pdfProgressContainer) pdfProgressContainer.style.display = 'block';
+        if (pdfStatus) pdfStatus.style.display = 'none';
+
+        const percent = Math.min(100, Math.max(0, status.percent || 0));
+        if (pdfProgressFill) {
+          pdfProgressFill.style.width = `${percent}%`;
+          pdfProgressFill.textContent = `${percent}%`;
+        }
+        if (pdfProgressText) {
+          pdfProgressText.textContent = status.statusText || `Загрузка: ${status.current || 0} из ${status.total || 0} слайдов`;
+        }
+
+        if (!pdfPollTimer) {
+          pdfPollTimer = setInterval(syncPdfDownloadStatus, 600);
+        }
+      } else {
+        if (pdfPollTimer) {
+          clearInterval(pdfPollTimer);
+          pdfPollTimer = null;
+        }
+
+        if (downloadBtn) downloadBtn.disabled = false;
+        if (span) span.textContent = 'Скачать PDF';
+
+        if (status.finished) {
+          if (status.success) {
+            if (pdfProgressFill) {
+              pdfProgressFill.style.width = '100%';
+              pdfProgressFill.textContent = '100%';
+            }
+            showPdfStatus(status.statusText || `Готово! Скачано в файл «${status.fileName}»`, 'success');
+          } else if (status.error) {
+            showPdfStatus(status.statusText || `Ошибка: ${status.error}`, 'error');
+          }
+        }
+      }
+    } catch (e) {
+      // Content script not ready or active tab closed
+    }
   }
 
   if (downloadBtn) {
     downloadBtn.addEventListener('click', async () => {
+      const saveAs = pdfSaveAsToggle ? pdfSaveAsToggle.checked : false;
+      const subfolder = pdfSubfolderInput ? pdfSubfolderInput.value.trim() : 'Maxitet';
+
+      if (chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ pdfSaveAs: saveAs, pdfSubfolder: subfolder });
+      }
+
       downloadBtn.disabled = true;
-      pdfProgressContainer.style.display = 'block';
-      pdfStatus.style.display = 'none';
-      pdfProgressFill.style.width = '0%';
-      pdfProgressFill.textContent = '0%';
-      pdfProgressText.textContent = 'Поиск презентации на странице…';
+      const span = downloadBtn.querySelector('span');
+      if (span) span.textContent = 'Запуск…';
+      if (pdfProgressContainer) pdfProgressContainer.style.display = 'block';
+      if (pdfStatus) pdfStatus.style.display = 'none';
+      if (pdfProgressFill) {
+        pdfProgressFill.style.width = '0%';
+        pdfProgressFill.textContent = '0%';
+      }
+      if (pdfProgressText) {
+        pdfProgressText.textContent = 'Запуск фонового скачивания на странице…';
+      }
 
       try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (!tab || !tab.url || !tab.url.includes('vision.maximumtest.ru')) {
           showPdfStatus('Ошибка: откройте урок на vision.maximumtest.ru', 'error');
           downloadBtn.disabled = false;
+          if (span) span.textContent = 'Скачать PDF';
           return;
         }
 
-        // 1. Запрашиваем информацию о презентации через content.js (читает Pinia store и DOM)
-        const presInfo = await sendToContent({ type: 'GET_PRESENTATION_INFO' }).catch(() => null);
+        const res = await sendToContent({
+          type: 'START_PRESENTATION_DOWNLOAD',
+          options: { saveAs, subfolder }
+        });
 
-        let srcTemplate = presInfo?.srcTemplate;
-        let knownPagesCount = presInfo?.pagesCount || 0;
-        let currentSrc = presInfo?.currentSrc;
-
-        // Fallback через прямой опрос DOM страницы, если скрипт не ответил
-        if (!srcTemplate && !currentSrc) {
-          const injection = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: () => {
-              const img = document.querySelector('.viewer-main-img__img') || document.querySelector('.viewer img');
-              return img ? (img.currentSrc || img.src) : null;
-            },
-          }).catch(() => null);
-          currentSrc = injection?.[0]?.result;
-        }
-
-        if (!srcTemplate && currentSrc) {
-          const match = currentSrc.match(/^(.*?(?:page[._-]?|slide[._-]?|\/))(\d+)(\.[a-zA-Z0-9]+(?:\?.*)?)$/i);
-          if (match) {
-            srcTemplate = `${match[1]}{{pageNumer}}${match[3]}`;
-          }
-        }
-
-        if (!srcTemplate && !currentSrc) {
-          showPdfStatus('Слайды не найдены. Убедитесь, что преподаватель включил презентацию.', 'error');
+        if (res?.error) {
+          showPdfStatus(`Ошибка: ${res.error}`, 'error');
           downloadBtn.disabled = false;
+          if (span) span.textContent = 'Скачать PDF';
           return;
         }
 
-        function getPageUrl(pageNum) {
-          if (srcTemplate) {
-            return srcTemplate.replace('{{pageNumer}}', pageNum);
-          }
-          return currentSrc;
+        if (span) span.textContent = 'Загрузка в фоне…';
+        showToast('Скачивание запущено в фоне. Попап можно закрывать!', 'info');
+
+        if (!pdfPollTimer) {
+          pdfPollTimer = setInterval(syncPdfDownloadStatus, 600);
         }
-
-        showPdfStatus('Сканирование и загрузка слайдов презентации…', '');
-
-        // Проверяем jsPDF
-        if (typeof window.jspdf === 'undefined' && typeof jspdf === 'undefined') {
-          showPdfStatus('Ошибка: библиотека jsPDF не найдена', 'error');
-          downloadBtn.disabled = false;
-          return;
-        }
-        const jsPDFConstructor = window.jspdf ? window.jspdf.jsPDF : jspdf.jsPDF;
-
-        const downloadedSlides = []; // { pageNum, blob }
-
-        if (knownPagesCount > 0) {
-          // Точное количество известно из Pinia Store М.Класс
-          pdfProgressText.textContent = `Загрузка: 0 из ${knownPagesCount} слайдов`;
-          for (let p = 1; p <= knownPagesCount; p++) {
-            const pageUrl = getPageUrl(p);
-            try {
-              const resp = await fetch(pageUrl);
-              if (resp.ok) {
-                const blob = await resp.blob();
-                downloadedSlides.push({ pageNum: p, blob });
-              }
-            } catch (err) {
-              console.warn(`Ошибка скачивания слайда ${p}:`, err);
-            }
-            updatePdfProgress(p, knownPagesCount);
-          }
-        } else {
-          // Сканируем страницы последовательно до 3 промахов подряд
-          let pageNum = 1;
-          let consecutiveFails = 0;
-          while (consecutiveFails < 3 && pageNum <= 300) {
-            const pageUrl = getPageUrl(pageNum);
-            try {
-              const resp = await fetch(pageUrl);
-              if (resp.ok) {
-                const blob = await resp.blob();
-                downloadedSlides.push({ pageNum, blob });
-                consecutiveFails = 0;
-                pdfProgressText.textContent = `Собрано: ${downloadedSlides.length} слайдов (проверка стр. ${pageNum}…)`;
-              } else {
-                consecutiveFails++;
-              }
-            } catch (e) {
-              consecutiveFails++;
-            }
-            pageNum++;
-          }
-        }
-
-        if (downloadedSlides.length === 0) {
-          showPdfStatus('Ошибка: не удалось скачать ни одного слайда. Проверьте сеть или обновите вкладку.', 'error');
-          downloadBtn.disabled = false;
-          return;
-        }
-
-        showPdfStatus(`Собрано ${downloadedSlides.length} слайдов. Формирование PDF…`, '');
-        updatePdfProgress(0, downloadedSlides.length);
-
-        const pdf = new jsPDFConstructor('l', 'mm', 'a4');
-
-        for (let i = 0; i < downloadedSlides.length; i++) {
-          const item = downloadedSlides[i];
-          updatePdfProgress(i + 1, downloadedSlides.length);
-
-          try {
-            const b64 = await blobToBase64(item.blob);
-            if (i > 0) {
-              pdf.addPage('a4', 'landscape');
-            }
-            const imgObj = await loadImage(b64);
-            const sw = imgObj.width;
-            const sh = imgObj.height;
-            const scale = Math.min(297 / sw, 210 / sh);
-            const dw = sw * scale;
-            const dh = sh * scale;
-            const dx = (297 - dw) / 2;
-            const dy = (210 - dh) / 2;
-
-            pdf.addImage(b64, 'JPEG', dx, dy, dw, dh);
-          } catch (err) {
-            console.error(`Ошибка добавления страницы ${item.pageNum} в PDF:`, err);
-          }
-        }
-
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-        const fileName = `maxitet_presentation_${timestamp}.pdf`;
-        pdf.save(fileName);
-
-        showPdfStatus(`Готово! Скачано ${downloadedSlides.length} слайдов в файл ${fileName}`, 'success');
       } catch (err) {
-        console.error('Ошибка создания PDF:', err);
         showPdfStatus(`Ошибка: ${err.message}`, 'error');
-      } finally {
         downloadBtn.disabled = false;
+        if (span) span.textContent = 'Скачать PDF';
       }
     });
   }

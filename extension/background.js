@@ -21,6 +21,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return true;
     }
 
+    if (message.type === 'SAVE_PDF_DOWNLOAD') {
+      try {
+        const downloadOptions = {
+          url: message.dataUrl,
+          filename: message.filename || 'presentation.pdf',
+          saveAs: Boolean(message.saveAs),
+          conflictAction: 'uniquify'
+        };
+        chrome.downloads.download(downloadOptions, (downloadId) => {
+          if (chrome.runtime.lastError) {
+            console.warn('[Maxitet Master] chrome.downloads.download error:', chrome.runtime.lastError);
+            sendResponse({ error: chrome.runtime.lastError.message });
+          } else {
+            sendResponse({ success: true, downloadId });
+          }
+        });
+      } catch (err) {
+        console.error('[Maxitet Master] SAVE_PDF_DOWNLOAD error:', err);
+        sendResponse({ error: err.message });
+      }
+      return true;
+    }
+
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (!tabs[0]) {
         sendResponse({ error: 'Нет активной вкладки' });

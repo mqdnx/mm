@@ -624,6 +624,103 @@ input:checked + .slider:before {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
+/* Настройки папки скачивания PDF */
+.presentation-settings {
+  margin-top: 9px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--text-sub);
+  transition: opacity 0.2s ease;
+}
+
+.setting-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  user-select: none;
+  color: #d1d5db;
+  font-size: 11.5px;
+}
+
+.setting-checkbox-label input[type="checkbox"] {
+  display: none;
+}
+
+.custom-checkbox {
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.setting-checkbox-label input[type="checkbox"]:checked + .custom-checkbox {
+  background: #fbbf24;
+  border-color: #fbbf24;
+}
+
+.setting-checkbox-label input[type="checkbox"]:checked + .custom-checkbox::after {
+  content: '';
+  width: 3.5px;
+  height: 6.5px;
+  border: solid #000;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+  margin-bottom: 2px;
+}
+
+.subfolder-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.setting-subfolder-label {
+  font-size: 11px;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.setting-subfolder-input {
+  flex: 1;
+  max-width: 140px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  color: #ffffff;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.setting-subfolder-input:focus {
+  border-color: rgba(251, 191, 36, 0.6);
+}
+
+.setting-subfolder-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Прогресс-бар скачивания PDF */
 #pdf-progress-container {
   margin-top: 10px;

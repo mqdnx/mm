@@ -148,6 +148,7 @@
   const SVG_TOAST_FREEZE = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>`;
   const SVG_TOAST_MOON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
   const SVG_TOAST_SUN = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
+  const SVG_TOAST_DOWNLOAD = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
 
   function showFloatingToast(msg, iconSvg = SVG_TOAST_LOCK) {
     const existing = document.getElementById('maxitet-floating-toast');
@@ -1592,17 +1593,359 @@
           }
         }
 
+        const suggestedFileName = getSanitizedPresentationFileName(cachedPresentationStore);
+
         sendResponse({
           hasPresentation: Boolean(presImg || cachedPresentationStore?.isPresentationEnabled || srcTemplate),
           currentSrc,
           srcTemplate,
           pagesCount,
           currentPage,
+          subject: cachedPresentationStore?.subject || '',
+          lessonTitle: cachedPresentationStore?.lessonTitle || '',
+          meetingTitle: cachedPresentationStore?.meetingTitle || '',
+          presFileName: cachedPresentationStore?.presFileName || '',
+          suggestedFileName,
         });
+        break;
+      }
+
+      case 'START_PRESENTATION_DOWNLOAD': {
+        if (pdfDownloadState.isDownloading) {
+          sendResponse({ started: false, alreadyRunning: true, state: pdfDownloadState });
+          break;
+        }
+        startBackgroundPresentationDownload(message.options || {}).catch((err) => {
+          console.error('[Maxitet Master] Ошибка запуска скачивания презентации:', err);
+        });
+        sendResponse({ started: true, state: pdfDownloadState });
+        break;
+      }
+
+      case 'GET_PRESENTATION_DOWNLOAD_STATUS': {
+        sendResponse({ ...pdfDownloadState });
         break;
       }
     }
   });
+
+  // ─── Presentation PDF Background Downloader ──────────────
+  let pdfDownloadState = {
+    isDownloading: false,
+    current: 0,
+    total: 0,
+    percent: 0,
+    statusText: '',
+    fileName: '',
+    finished: false,
+    success: false,
+    error: null,
+  };
+
+  function updatePdfDownloadState(patch) {
+    Object.assign(pdfDownloadState, patch);
+    if (chrome.storage && chrome.storage.local) {
+      chrome.storage.local.set({ presentationDownloadProgress: pdfDownloadState }).catch(() => {});
+    }
+  }
+
+  function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+  }
+
+  function getSanitizedPresentationFileName(info) {
+    const subject = (info?.subject || '').trim();
+    const lessonTitle = (info?.lessonTitle || '').trim();
+    const presFileName = (info?.presFileName || '').trim();
+    const meetingTitle = (info?.meetingTitle || '').trim();
+
+    let nameParts = [];
+
+    if (subject && lessonTitle) {
+      if (lessonTitle.toLowerCase().includes(subject.toLowerCase())) {
+        nameParts.push(lessonTitle);
+      } else {
+        nameParts.push(`${subject} - ${lessonTitle}`);
+      }
+    } else if (lessonTitle) {
+      nameParts.push(lessonTitle);
+    } else if (subject) {
+      nameParts.push(subject);
+    } else if (presFileName) {
+      nameParts.push(presFileName.replace(/\.pdf$/i, ''));
+    } else if (meetingTitle) {
+      nameParts.push(meetingTitle);
+    }
+
+    if (nameParts.length === 0) {
+      const domHeader = document.querySelector('.lesson-title, .meeting-title, .dashboard-tab__title');
+      if (domHeader && domHeader.textContent && domHeader.textContent.trim().length > 2) {
+        const text = domHeader.textContent.trim();
+        if (!['Чат', 'Участники', 'Тьютор', 'Опросы'].includes(text)) {
+          nameParts.push(text);
+        }
+      }
+    }
+
+    let finalName = nameParts.join(' ').trim();
+    if (!finalName) {
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`;
+      finalName = `Презентация М.Класс_${dateStr}`;
+    }
+
+    finalName = finalName
+      .replace(/[\\/:*?"<>|]+/g, '_')
+      .replace(/[\x00-\x1F\x7F]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/[\.\s]+$/, '');
+
+    if (finalName.length > 120) {
+      finalName = finalName.substring(0, 120).trim().replace(/[\.\s]+$/, '');
+    }
+
+    return `${finalName}.pdf`;
+  }
+
+  function sanitizeDownloadSubfolder(folder) {
+    if (!folder || typeof folder !== 'string') return '';
+    return folder
+      .replace(/\\/g, '/')
+      .replace(/[^\p{L}\p{N}_\-\s\/]/gu, '')
+      .replace(/\/+/g, '/')
+      .replace(/^\/+|\/+$/g, '')
+      .trim();
+  }
+
+  async function startBackgroundPresentationDownload(options = {}) {
+    window.postMessage({ type: 'MAXITET_GET_PRESENTATION_STORE' }, '*');
+    await new Promise((r) => setTimeout(r, 120));
+
+    const presImg = getActivePresentationElement();
+    let currentSrc = presImg ? (presImg.currentSrc || presImg.src) : (cachedPresentationStore?.currentSrc || null);
+    let srcTemplate = cachedPresentationStore?.srcTemplate || null;
+    let knownPagesCount = cachedPresentationStore?.pagesCount || 0;
+
+    if (!srcTemplate && currentSrc) {
+      const match = currentSrc.match(/^(.*?(?:page[._-]?|slide[._-]?|\/))(\d+)(\.[a-zA-Z0-9]+(?:\?.*)?)$/i);
+      if (match) {
+        srcTemplate = `${match[1]}{{pageNumer}}${match[3]}`;
+      }
+    }
+
+    if (!srcTemplate && !currentSrc) {
+      const err = 'Слайды не найдены. Убедитесь, что преподаватель включил презентацию.';
+      updatePdfDownloadState({
+        isDownloading: false,
+        finished: true,
+        success: false,
+        error: err,
+        statusText: err,
+      });
+      showFloatingToast(err, SVG_TOAST_DOWNLOAD);
+      return;
+    }
+
+    function getPageUrl(pageNum) {
+      if (srcTemplate) {
+        return srcTemplate.replace('{{pageNumer}}', pageNum);
+      }
+      return currentSrc;
+    }
+
+    const jsPDFConstructor = window.jspdf ? window.jspdf.jsPDF : (typeof jspdf !== 'undefined' ? jspdf.jsPDF : null);
+    if (!jsPDFConstructor) {
+      const err = 'Библиотека jsPDF не найдена';
+      updatePdfDownloadState({
+        isDownloading: false,
+        finished: true,
+        success: false,
+        error: err,
+        statusText: err,
+      });
+      showFloatingToast(err, SVG_TOAST_DOWNLOAD);
+      return;
+    }
+
+    const fileName = getSanitizedPresentationFileName(cachedPresentationStore);
+    const subfolder = sanitizeDownloadSubfolder(options.subfolder);
+    const saveAs = Boolean(options.saveAs);
+    const downloadPath = (!saveAs && subfolder) ? `${subfolder}/${fileName}` : fileName;
+
+    updatePdfDownloadState({
+      isDownloading: true,
+      finished: false,
+      success: false,
+      error: null,
+      current: 0,
+      total: knownPagesCount || 0,
+      percent: 0,
+      fileName,
+      statusText: 'Поиск и сканирование слайдов презентации…',
+    });
+
+    showFloatingToast('Скачивание презентации запущено в фоне', SVG_TOAST_DOWNLOAD);
+
+    try {
+      const downloadedSlides = [];
+
+      if (knownPagesCount > 0) {
+        for (let p = 1; p <= knownPagesCount; p++) {
+          const pageUrl = getPageUrl(p);
+          try {
+            const resp = await fetch(pageUrl);
+            if (resp.ok) {
+              const blob = await resp.blob();
+              downloadedSlides.push({ pageNum: p, blob });
+            }
+          } catch (err) {
+            console.warn(`[Maxitet Master] Ошибка загрузки слайда ${p}:`, err);
+          }
+          const pct = Math.round((p / knownPagesCount) * 90);
+          updatePdfDownloadState({
+            current: p,
+            total: knownPagesCount,
+            percent: pct,
+            statusText: `Загрузка: ${p} из ${knownPagesCount} слайдов`,
+          });
+        }
+      } else {
+        let pageNum = 1;
+        let consecutiveFails = 0;
+        while (consecutiveFails < 3 && pageNum <= 300) {
+          const pageUrl = getPageUrl(pageNum);
+          try {
+            const resp = await fetch(pageUrl);
+            if (resp.ok) {
+              const blob = await resp.blob();
+              downloadedSlides.push({ pageNum, blob });
+              consecutiveFails = 0;
+            } else {
+              consecutiveFails++;
+            }
+          } catch (e) {
+            consecutiveFails++;
+          }
+          const currCount = downloadedSlides.length;
+          updatePdfDownloadState({
+            current: currCount,
+            total: Math.max(currCount, pageNum),
+            percent: Math.min(85, currCount * 3),
+            statusText: `Собрано: ${currCount} слайдов (проверка стр. ${pageNum}…)`,
+          });
+          pageNum++;
+        }
+      }
+
+      if (downloadedSlides.length === 0) {
+        throw new Error('Не удалось скачать ни одного слайда');
+      }
+
+      updatePdfDownloadState({
+        percent: 92,
+        statusText: `Собрано ${downloadedSlides.length} слайдов. Формирование PDF…`,
+      });
+
+      const pdf = new jsPDFConstructor('l', 'mm', 'a4');
+      for (let i = 0; i < downloadedSlides.length; i++) {
+        const item = downloadedSlides[i];
+        try {
+          const b64 = await blobToBase64(item.blob);
+          if (i > 0) {
+            pdf.addPage('a4', 'landscape');
+          }
+          const imgObj = await loadImage(b64);
+          const sw = imgObj.width;
+          const sh = imgObj.height;
+          const scale = Math.min(297 / sw, 210 / sh);
+          const dw = sw * scale;
+          const dh = sh * scale;
+          const dx = (297 - dw) / 2;
+          const dy = (210 - dh) / 2;
+          pdf.addImage(b64, 'JPEG', dx, dy, dw, dh);
+        } catch (err) {
+          console.error(`[Maxitet Master] Ошибка добавления страницы ${item.pageNum} в PDF:`, err);
+        }
+      }
+
+      updatePdfDownloadState({
+        percent: 98,
+        statusText: 'Сохранение файла PDF…',
+      });
+
+      let downloadSuccess = false;
+      try {
+        const dataUri = pdf.output('datauristring');
+        const bgRes = await new Promise((resolve) => {
+          chrome.runtime.sendMessage(
+            {
+              target: 'background',
+              type: 'SAVE_PDF_DOWNLOAD',
+              dataUrl: dataUri,
+              filename: downloadPath,
+              saveAs: saveAs,
+            },
+            (res) => {
+              if (chrome.runtime.lastError) {
+                resolve({ error: chrome.runtime.lastError.message });
+              } else {
+                resolve(res || {});
+              }
+            }
+          );
+        });
+
+        if (bgRes && !bgRes.error) {
+          downloadSuccess = true;
+        } else {
+          console.warn('[Maxitet Master] Фоновое сохранение через background вернуло ошибку:', bgRes?.error);
+        }
+      } catch (saveErr) {
+        console.warn('[Maxitet Master] Исключение при отправке в background:', saveErr);
+      }
+
+      if (!downloadSuccess) {
+        pdf.save(fileName);
+      }
+
+      const successMsg = `Готово! Скачано ${downloadedSlides.length} слайдов в файл «${fileName}»`;
+      updatePdfDownloadState({
+        isDownloading: false,
+        finished: true,
+        success: true,
+        percent: 100,
+        statusText: successMsg,
+      });
+
+      showFloatingToast(`Презентация скачана: ${fileName}`, SVG_TOAST_DOWNLOAD);
+    } catch (err) {
+      console.error('[Maxitet Master] Ошибка создания PDF:', err);
+      updatePdfDownloadState({
+        isDownloading: false,
+        finished: true,
+        success: false,
+        error: err.message,
+        statusText: `Ошибка: ${err.message}`,
+      });
+      showFloatingToast(`Ошибка скачивания: ${err.message}`, SVG_TOAST_DOWNLOAD);
+    }
+  }
 
   // ─── Sync Stealth & Freeze Cam ────────────────────────────
   function syncStealthMode() {
@@ -2244,14 +2587,21 @@
       body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat,
       body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat__wrap,
       body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat-scroller,
-      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat__posted {
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat__posted,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .dashboard__content,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .participants,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .participants__list,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .participant-item,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .user-card,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .users-list {
         background: transparent !important;
         background-color: transparent !important;
       }
 
-      /* Шапка чата */
+      /* Шапка чата и участников */
       body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .dashboard__header,
-      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .dashboard__header-top {
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .dashboard__header-top,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .participants__header {
         background: rgba(255, 255, 255, 0.04) !important;
         border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
       }
@@ -2295,6 +2645,19 @@
         background: rgba(30, 32, 34, 0.65) !important;
         backdrop-filter: none !important;
         -webkit-backdrop-filter: none !important;
+      }
+
+      /* Скрываем все tooltip'ы кнопок управления и сайдбара в zen-режиме */
+      body.maxitet-zen-mode .izi-tooltip:not(.message-actions__tooltip) {
+        opacity: 0 !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+        display: none !important;
+      }
+
+      /* Также полностью скрываем в обычном режиме tooltip'ы, которые не относятся к чату/сообщениям */
+      .izi-tooltip:not(.message-actions__tooltip):not(.dashboard-drawer .izi-tooltip) {
+        transition: opacity 0.15s ease, visibility 0.15s ease !important;
       }
 
       /* Селектор стикеров/смайликов поверх всплывающего чата в Дзене */
@@ -2497,6 +2860,34 @@
     (document.head || document.documentElement).appendChild(style);
   }
 
+  function toggleZenChat(forceOpen) {
+    const drawer = document.querySelector('.dashboard-drawer');
+    if (!drawer) return;
+
+    const shouldOpen = typeof forceOpen === 'boolean'
+      ? forceOpen
+      : !drawer.classList.contains('maxitet-floating-chat-open');
+
+    drawer.classList.toggle('maxitet-floating-chat-open', shouldOpen);
+    syncZenDock();
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 300);
+
+    if (shouldOpen) {
+      setTimeout(() => {
+        const input = drawer.querySelector('.message-input textarea, .message-input input, textarea, input, [contenteditable="true"]');
+        if (input && typeof input.focus === 'function') {
+          input.focus();
+        }
+      }, 80);
+    } else {
+      const active = document.activeElement;
+      if (active && (drawer.contains(active) || active === document.body)) {
+        if (typeof active.blur === 'function') active.blur();
+      }
+    }
+  }
+
   function injectSideZenDock() {
     document.getElementById('maxitet-dock-exit')?.remove();
     if (document.getElementById('maxitet-side-dock')) return;
@@ -2511,7 +2902,7 @@
         <span id="maxitet-dock-cam-icon">${SVG_DOCK_CAM_OFF}</span>
       </button>
       <div class="maxitet-dock-divider"></div>
-      <button id="maxitet-dock-chat" class="maxitet-dock-btn" title="Чат">
+      <button id="maxitet-dock-chat" class="maxitet-dock-btn" title="Чат (C)">
         ${SVG_DOCK_CHAT}
       </button>
     `;
@@ -2528,13 +2919,7 @@
     });
 
     document.getElementById('maxitet-dock-chat')?.addEventListener('click', () => {
-      const drawer = document.querySelector('.dashboard-drawer');
-      if (drawer) {
-        drawer.classList.toggle('maxitet-floating-chat-open');
-        syncZenDock();
-        setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
-        setTimeout(() => window.dispatchEvent(new Event('resize')), 300);
-      }
+      toggleZenChat();
     });
   }
 
@@ -2623,7 +3008,9 @@
 
         const bubble = btn.closest('.message-bubble') || block;
         const alreadyOpen = document.querySelector('.message-actions__tooltip.maxitet-actions-open');
-        const isCurrentOpen = alreadyOpen && alreadyOpen.dataset.forBubble === (bubble.id || 'current');
+        const bubbleId = bubble.id || `msg-${Date.now()}`;
+        if (!bubble.id) bubble.id = bubbleId;
+        const isCurrentOpen = alreadyOpen && alreadyOpen.dataset.forBubble === bubbleId;
 
         // Сначала скрываем любые открытые меню реакций
         document.querySelectorAll('.message-actions__tooltip.maxitet-actions-open').forEach((tt) => {
@@ -2645,7 +3032,10 @@
 
           document.querySelectorAll('.message-actions__tooltip').forEach((tt) => {
             const ttRect = tt.getBoundingClientRect();
-            const dist = Math.abs(ttRect.top - bubbleRect.top);
+            // Учитываем расстояние по обеим осям для более точного поиска
+            const verticalDist = Math.abs(ttRect.top - bubbleRect.top);
+            const horizontalOverlap = Math.max(0, Math.min(ttRect.right, bubbleRect.right) - Math.max(ttRect.left, bubbleRect.left));
+            const dist = verticalDist - horizontalOverlap * 0.5; // Бонус за горизонтальное перекрытие
             if (dist < minDistance) {
               minDistance = dist;
               bestTooltip = tt;
@@ -2653,10 +3043,10 @@
           });
 
           if (bestTooltip && minDistance < 180) {
-            bestTooltip.dataset.forBubble = bubble.id || 'current';
+            bestTooltip.dataset.forBubble = bubbleId;
             bestTooltip.classList.add('maxitet-actions-open', 'expanded');
           }
-        }, 40);
+        }, 50);
       });
 
       block.appendChild(btn);
@@ -2667,34 +3057,6 @@
   // Устраняет баг платформы М.Класс, когда тултипы кнопок и реакции на сообщения
   // не исчезают при уводе мыши и остаются висеть на экране.
   function initTooltipAutoHide() {
-    let ticking = false;
-
-    function handlePointer(e) {
-      if (ticking) return;
-      ticking = true;
-
-      requestAnimationFrame(() => {
-        ticking = false;
-        const target = e.target;
-        if (!target) return;
-
-        // Подсказки нижних кнопок управления ("Реакции", "Настройки", "Микрофон", etc.)
-        const isOverBottomButtons = !!target.closest(
-          '.control-buttons, .meeting__buttons, #meeting-btns, .meeting-button'
-        );
-        if (!isOverBottomButtons) {
-          // Если курсор не над кнопками управления — гасим любые зависшие подсказки кнопок
-          document.querySelectorAll('.izi-tooltip.expanded').forEach((tt) => {
-            if (!tt.classList.contains('message-actions__tooltip') && !tt.closest('.dashboard-drawer')) {
-              tt.classList.remove('expanded');
-            }
-          });
-        }
-      });
-    }
-
-    window.addEventListener('pointermove', handlePointer, { passive: true });
-
     // Закрытие открытых реакций при скролле чата
     window.addEventListener('scroll', () => {
       document.querySelectorAll('.message-actions__tooltip.maxitet-actions-open').forEach((tt) => {
@@ -2703,18 +3065,7 @@
     }, { capture: true, passive: true });
 
     document.addEventListener('click', (e) => {
-      // 1. Клик по кнопкам управления снизу
-      if (e.target && e.target.closest && e.target.closest('.control-buttons, .meeting__buttons, #meeting-btns')) {
-        setTimeout(() => {
-          document.querySelectorAll('.izi-tooltip.expanded').forEach((tt) => {
-            if (!tt.classList.contains('message-actions__tooltip') && !tt.closest('.dashboard-drawer')) {
-              tt.classList.remove('expanded');
-            }
-          });
-        }, 80);
-      }
-
-      // 2. Клик вне меню реакций — закрываем открытую плашку реакций
+      // Клик вне меню реакций — закрываем открытую плашку реакций
       if (!e.target.closest('.maxitet-msg-action-btn') && !e.target.closest('.message-actions__tooltip')) {
         document.querySelectorAll('.message-actions__tooltip.maxitet-actions-open').forEach((tt) => {
           tt.classList.remove('maxitet-actions-open');
@@ -2783,6 +3134,19 @@
         (typeof el.closest === 'function' && el.closest('input, textarea, [contenteditable="true"]'))
       );
 
+      // Escape закрывает плавающий чат в Дзен-режиме, даже если фокус внутри поля ввода чата
+      if (e.key === 'Escape' || e.code === 'Escape') {
+        if (isZenModeActive) {
+          const drawer = document.querySelector('.dashboard-drawer');
+          if (drawer && drawer.classList.contains('maxitet-floating-chat-open')) {
+            if (typeof e.preventDefault === 'function') e.preventDefault();
+            if (typeof e.stopPropagation === 'function') e.stopPropagation();
+            toggleZenChat(false);
+            return;
+          }
+        }
+      }
+
       // Если ввод происходит непосредственно в поле ввода (пользователь пишет в чате)
       if (isInput(target)) return;
 
@@ -2802,7 +3166,8 @@
       if (
         code === 'KeyZ' || key === 'z' || key === 'я' ||
         code === 'KeyD' || key === 'd' || key === 'в' ||
-        code === 'KeyS' || key === 's' || key === 'ы'
+        code === 'KeyS' || key === 's' || key === 'ы' ||
+        code === 'KeyC' || key === 'c' || key === 'с'
       ) {
         const now = Date.now();
         if (now - lastHotkeyTrigger < 150) return;
@@ -2833,6 +3198,12 @@
             showFloatingToast('Снимок сохранён в Загрузки (S)', SVG_TOAST_CAMERA);
           }
         });
+      } else if (code === 'KeyC' || key === 'c' || key === 'с') {
+        if (isZenModeActive) {
+          if (typeof e.preventDefault === 'function') e.preventDefault();
+          if (typeof e.stopPropagation === 'function') e.stopPropagation();
+          toggleZenChat();
+        }
       }
     };
 
