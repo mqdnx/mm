@@ -1,8 +1,21 @@
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.target === 'background') {
     if (message.type === 'FETCH_IMAGE_BASE64') {
-      fetch(message.url)
+      const rawUrl = message.url;
+      if (!rawUrl) {
+        sendResponse({ error: 'URL не указан' });
+        return true;
+      }
+      const url = rawUrl.startsWith('http')
+        ? rawUrl
+        : `https://vision.maximumtest.ru${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      fetch(url, { signal: controller.signal })
         .then(async (res) => {
+          clearTimeout(timeoutId);
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const mime = res.headers.get('content-type') || 'image/jpeg';
           const buffer = await res.arrayBuffer();
@@ -16,6 +29,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           sendResponse({ dataUrl });
         })
         .catch((err) => {
+          clearTimeout(timeoutId);
           sendResponse({ error: err.message });
         });
       return true;
@@ -23,9 +37,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     if (message.type === 'SAVE_PDF_DOWNLOAD') {
       try {
+        const safeFilename = (message.filename || 'presentation.pdf').replace(/\\/g, '/');
         const downloadOptions = {
           url: message.dataUrl,
-          filename: message.filename || 'presentation.pdf',
+          filename: safeFilename,
           saveAs: Boolean(message.saveAs),
           conflictAction: 'uniquify'
         };

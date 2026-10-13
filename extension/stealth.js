@@ -73,15 +73,8 @@
 
   // ─── 3. Глушение событий потери фокуса и видимости ──────────
 
-  const eventsToSilence = [
-    'visibilitychange',
-    'webkitvisibilitychange',
-    'blur',
-    'focusout',
-    'mouseleave',
-  ];
-
-  eventsToSilence.forEach((eventName) => {
+  // Visibility API события (переключение вкладок, сворачивание окна)
+  ['visibilitychange', 'webkitvisibilitychange'].forEach((eventName) => {
     window.addEventListener(
       eventName,
       (e) => {
@@ -104,6 +97,19 @@
       true
     );
   });
+
+  // Событие потери фокуса окна (переход в другое приложение/окно)
+  // Глушим blur только на самом окне/документе, не затрагивая внутренние поля ввода и элементы страницы
+  window.addEventListener(
+    'blur',
+    (e) => {
+      if (isStealthActive && (!e.target || e.target === window || e.target === document)) {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+      }
+    },
+    true
+  );
 
   // ─── Разблокировка контекстного меню (ПКМ) ───────────────────
   window.addEventListener('contextmenu', (e) => {

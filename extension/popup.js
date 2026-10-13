@@ -786,12 +786,19 @@
 
         if (status.finished) {
           if (status.success) {
+            if (pdfProgressContainer) pdfProgressContainer.style.display = 'block';
             if (pdfProgressFill) {
               pdfProgressFill.style.width = '100%';
               pdfProgressFill.textContent = '100%';
             }
+            if (pdfProgressText) {
+              pdfProgressText.textContent = status.statusText || 'Готово!';
+            }
             showPdfStatus(status.statusText || `Готово! Скачано в файл «${status.fileName}»`, 'success');
           } else if (status.error) {
+            if (pdfProgressContainer) {
+              pdfProgressContainer.style.display = 'none';
+            }
             showPdfStatus(status.statusText || `Ошибка: ${status.error}`, 'error');
           }
         }
@@ -826,6 +833,7 @@
       try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (!tab || !tab.url || !tab.url.includes('vision.maximumtest.ru')) {
+          if (pdfProgressContainer) pdfProgressContainer.style.display = 'none';
           showPdfStatus('Ошибка: откройте урок на vision.maximumtest.ru', 'error');
           downloadBtn.disabled = false;
           if (span) span.textContent = 'Скачать PDF';
@@ -838,6 +846,7 @@
         });
 
         if (res?.error) {
+          if (pdfProgressContainer) pdfProgressContainer.style.display = 'none';
           showPdfStatus(`Ошибка: ${res.error}`, 'error');
           downloadBtn.disabled = false;
           if (span) span.textContent = 'Скачать PDF';
@@ -851,6 +860,7 @@
           pdfPollTimer = setInterval(syncPdfDownloadStatus, 600);
         }
       } catch (err) {
+        if (pdfProgressContainer) pdfProgressContainer.style.display = 'none';
         showPdfStatus(`Ошибка: ${err.message}`, 'error');
         downloadBtn.disabled = false;
         if (span) span.textContent = 'Скачать PDF';

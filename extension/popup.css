@@ -33,8 +33,15 @@
   box-sizing: border-box;
 }
 
+html {
+  width: 360px;
+  max-width: 360px;
+  overflow-x: hidden;
+}
+
 body {
   width: 360px;
+  max-width: 360px;
   min-height: 120px;
   max-height: 570px;
   background-color: var(--bg-deep);
@@ -42,6 +49,7 @@ body {
   font-family: var(--font-family);
   font-size: 13px;
   line-height: 1.4;
+  overflow-x: hidden;
   overflow-y: auto;
   user-select: none;
 }
@@ -479,7 +487,9 @@ h1 {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.85);
   pointer-events: none;
   opacity: 0;
-  transition: all 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+  visibility: hidden;
+  display: none;
+  transition: opacity 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
   z-index: 9999;
   text-align: left;
 }
@@ -494,18 +504,44 @@ h1 {
   border: 5px solid transparent;
   border-bottom-color: #141517;
   opacity: 0;
+  visibility: hidden;
+  display: none;
   pointer-events: none;
   transition: opacity 0.18s ease;
   z-index: 10000;
 }
 
 .info-tooltip:hover::after {
+  display: block;
   opacity: 1;
+  visibility: visible;
   transform: translateX(-50%) translateY(0);
 }
 
 .info-tooltip:hover::before {
+  display: block;
   opacity: 1;
+  visibility: visible;
+}
+
+/* Привязка тултипов у правого края окна (чтобы не распирали попап по ширине) */
+.setting-row .info-tooltip::after,
+.info-tooltip-left::after {
+  left: auto;
+  right: 0;
+  transform: translateY(-4px);
+}
+
+.setting-row .info-tooltip::before,
+.info-tooltip-left::before {
+  left: auto;
+  right: 4px;
+  transform: none;
+}
+
+.setting-row .info-tooltip:hover::after,
+.info-tooltip-left:hover::after {
+  transform: translateY(0);
 }
 
 /* ─── Тумблеры (Switch) ──────────────────────── */
