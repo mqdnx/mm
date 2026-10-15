@@ -2759,6 +2759,121 @@
         opacity: 0.15 !important;
       }
 
+      /* Опросы и голосования в Zen-режиме — единый стиль «жидкое стекло» */
+      body.maxitet-zen-mode .dashboard-drawer .survey-card,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-card,
+      body.maxitet-zen-mode .dashboard-drawer .survey-question-card,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-question-card,
+      body.maxitet-zen-mode .dashboard-drawer .survey-dashboard,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-dashboard,
+      body.maxitet-zen-mode .dashboard-drawer .survey-question-sidebar,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-question-sidebar {
+        background: rgba(255, 255, 255, 0.05) !important;
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        border-radius: 12px !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        box-shadow: none !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer .survey-card__header,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-card__header,
+      body.maxitet-zen-mode .dashboard-drawer .survey-card-status,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-card-status,
+      body.maxitet-zen-mode .dashboard-drawer .survey-answers-preview,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-answers-preview,
+      body.maxitet-zen-mode .dashboard-drawer .survey-card__collapsible-area,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-card__collapsible-area,
+      body.maxitet-zen-mode .dashboard-drawer .survey-card__variants,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-card__variants,
+      body.maxitet-zen-mode .dashboard-drawer .survey-card__variant-row,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-card__variant-row,
+      body.maxitet-zen-mode .dashboard-drawer .survey-variant-progress__header,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-variant-progress__header,
+      body.maxitet-zen-mode .dashboard-drawer .survey-question-card__header,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-question-card__header,
+      body.maxitet-zen-mode .dashboard-drawer .survey-question-card__variants,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-question-card__variants {
+        background: transparent !important;
+        background-color: transparent !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer .survey-card__title,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-card__title,
+      body.maxitet-zen-mode .dashboard-drawer .survey-question-card__title,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-question-card__title {
+        color: #f3f4f6 !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer .survey-card-status__text,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-card-status__text,
+      body.maxitet-zen-mode .dashboard-drawer .survey-answers-preview__title,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-answers-preview__title,
+      body.maxitet-zen-mode .dashboard-drawer .survey-variant-progress__title,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-variant-progress__title,
+      body.maxitet-zen-mode .dashboard-drawer .survey-variant-progress__progress,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-variant-progress__progress {
+        color: #d1d5db !important;
+      }
+
+      /* Варианты ответов / полосы прогресса в опросах */
+      body.maxitet-zen-mode .dashboard-drawer .survey-card__variant-progress,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-card__variant-progress,
+      body.maxitet-zen-mode .dashboard-drawer .survey-question-card__variant,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-question-card__variant {
+        background: rgba(255, 255, 255, 0.04) !important;
+        background-color: rgba(255, 255, 255, 0.04) !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        border-radius: 8px !important;
+        padding: 6px 10px !important;
+        transition: background-color 0.18s ease, border-color 0.18s ease !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer .survey-card__variant-progress:hover,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-card__variant-progress:hover {
+        background: rgba(255, 255, 255, 0.08) !important;
+        background-color: rgba(255, 255, 255, 0.08) !important;
+        border-color: rgba(255, 255, 255, 0.12) !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer .survey-card .izi-progress-linear,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-card .izi-progress-linear,
+      body.maxitet-zen-mode .dashboard-drawer .survey-variant-progress .izi-progress-linear,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-variant-progress .izi-progress-linear {
+        background: rgba(255, 255, 255, 0.12) !important;
+        background-color: rgba(255, 255, 255, 0.12) !important;
+        border-radius: 4px !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer .survey-card .izi-checkbox,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-card .izi-checkbox {
+        --background: rgba(255, 255, 255, 0.08) !important;
+        --border-color: rgba(255, 255, 255, 0.25) !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer .survey-card__footer,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-card__footer,
+      body.maxitet-zen-mode .dashboard-drawer .survey-question-card__footer,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-question-card__footer {
+        background: transparent !important;
+        background-color: transparent !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+        padding-top: 8px !important;
+        margin-top: 8px !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer .survey-card__hide-btn,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-card__hide-btn {
+        color: #9ca3af !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer .survey-card__hide-btn:hover,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .survey-card__hide-btn:hover {
+        color: #60a5fa !important;
+        background-color: transparent !important;
+      }
+
       /* Поле ввода сообщения и переключатель */
       body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-input {
         background-color: rgba(255, 255, 255, 0.06) !important;
@@ -2998,16 +3113,17 @@
     setTimeout(() => window.dispatchEvent(new Event('resize')), 300);
 
     if (shouldOpen) {
-      setTimeout(() => {
-        const input = drawer.querySelector('.message-input textarea, .message-input input, textarea, input, [contenteditable="true"]');
-        if (input && typeof input.focus === 'function') {
-          input.focus();
-        }
-      }, 80);
+      // При открытии чата не фокусируем поле ввода автоматически:
+      // авто-фокус захватывал ввод и блокировал повторные нажатия C.
+      // Теперь пользователь может непрерывно спамить C для открытия/закрытия чата.
+      // Поле ввода активируется только при явном клике по нему для набора сообщения.
     } else {
       const active = document.activeElement;
-      if (active && (drawer.contains(active) || active === document.body)) {
+      if (active && active !== document.body && drawer.contains(active)) {
         if (typeof active.blur === 'function') active.blur();
+      }
+      if (typeof window.focus === 'function') {
+        window.focus();
       }
     }
   }
@@ -3348,6 +3464,10 @@
     let lastHotkeyTrigger = 0;
 
     handleKeyDown = function(e) {
+      // 1. Бинды отключены при отсутствии на вкладке (вкладка скрыта или не в фокусе)
+      if (document.hidden) return;
+      if (typeof document.hasFocus === 'function' && !document.hasFocus()) return;
+
       const target = e.target;
       const doc = target?.ownerDocument || document;
       const activeEl = doc.activeElement;
@@ -3372,38 +3492,32 @@
         }
       }
 
-      // Если ввод происходит непосредственно в поле ввода (пользователь пишет в чате)
-      if (isInput(target)) return;
-
-      // Если фокус залип в поле ввода, но клик/нажатие произошло вне него (на слайде, видео, холсте):
-      if (isInput(activeEl)) {
-        if (activeEl && typeof activeEl.blur === 'function') {
-          activeEl.blur();
-        }
-      }
+      // 2. Бинды отключены при вводе сообщения в чате (активный ввод в input/textarea)
+      if (isInput(target) || isInput(activeEl)) return;
 
       if (e.ctrlKey || e.altKey || e.metaKey) return;
 
       const code = e.code;
       const key = (e.key || '').toLowerCase();
 
-      // Защита от дублирования хоткея при кросс-фрейм вызовах в пределах 150мс
-      if (
-        code === 'KeyZ' || key === 'z' || key === 'я' ||
-        code === 'KeyD' || key === 'd' || key === 'в' ||
-        code === 'KeyS' || key === 's' || key === 'ы' ||
-        code === 'KeyC' || key === 'c' || key === 'с'
-      ) {
+      const isChatKey = code === 'KeyC' || key === 'c' || key === 'с';
+      const isZenKey = code === 'KeyZ' || key === 'z' || key === 'я';
+      const isDarkKey = code === 'KeyD' || key === 'd' || key === 'в';
+      const isShotKey = code === 'KeyS' || key === 's' || key === 'ы';
+
+      // Защита от дублирования хоткея при кросс-фрейм вызовах (порог 80мс для клавиши C позволяет спамить)
+      if (isChatKey || isZenKey || isDarkKey || isShotKey) {
         const now = Date.now();
-        if (now - lastHotkeyTrigger < 150) return;
+        const threshold = isChatKey ? 80 : 120;
+        if (now - lastHotkeyTrigger < threshold) return;
         lastHotkeyTrigger = now;
       }
 
-      if (code === 'KeyZ' || key === 'z' || key === 'я') {
+      if (isZenKey) {
         if (typeof e.preventDefault === 'function') e.preventDefault();
         if (typeof e.stopPropagation === 'function') e.stopPropagation();
         setZenMode(!isZenModeActive);
-      } else if (code === 'KeyD' || key === 'd' || key === 'в') {
+      } else if (isDarkKey) {
         if (typeof e.preventDefault === 'function') e.preventDefault();
         if (typeof e.stopPropagation === 'function') e.stopPropagation();
         if (e.shiftKey) {
@@ -3411,7 +3525,7 @@
         } else {
           setSmartDarkMode(!isSmartDarkModeActive);
         }
-      } else if (code === 'KeyS' || key === 's' || key === 'ы') {
+      } else if (isShotKey) {
         if (typeof e.preventDefault === 'function') e.preventDefault();
         if (typeof e.stopPropagation === 'function') e.stopPropagation();
         triggerSlideScreenshot().then((res) => {
@@ -3423,11 +3537,14 @@
             showFloatingToast('Снимок сохранён в Загрузки (S)', SVG_TOAST_CAMERA);
           }
         });
-      } else if (code === 'KeyC' || key === 'c' || key === 'с') {
+      } else if (isChatKey) {
+        if (typeof e.preventDefault === 'function') e.preventDefault();
+        if (typeof e.stopPropagation === 'function') e.stopPropagation();
         if (isZenModeActive) {
-          if (typeof e.preventDefault === 'function') e.preventDefault();
-          if (typeof e.stopPropagation === 'function') e.stopPropagation();
           toggleZenChat();
+        } else {
+          const toggler = document.querySelector('.dashboard-toggler, .dashboard-drawer__toggler, button.dashboard-toggler');
+          if (toggler) toggler.click();
         }
       }
     };
@@ -3484,24 +3601,23 @@
       iframeObserver.observe(document.documentElement || document.body, { childList: true, subtree: true });
     } catch (_) {}
 
-    // ─── Снятие залипшего фокуса при клике по области презентации / демонстрации ───
+    // ─── Снятие залипшего фокуса при клике вне поля ввода (на блоке чата, слайде, фоне и т.д.) ───
     document.addEventListener('pointerdown', (e) => {
       const target = e.target;
       if (!target) return;
-      if (typeof target.closest === 'function' && target.closest(
-        '.meeting__screen-sharing-area, .sharing__inner, .viewer, .viewer-main-img, #paint-container, #paint-frame, .paint, .paint__inner, .sharing__screen-share, .sharing__screen-share-container, .sharing__screen-share-video'
-      )) {
+      const isInput = (el) => el && (
+        el.tagName === 'INPUT' ||
+        el.tagName === 'TEXTAREA' ||
+        el.isContentEditable ||
+        (typeof el.closest === 'function' && el.closest('input, textarea, [contenteditable="true"]'))
+      );
+
+      // Если клик вне поля ввода — снимаем фокус с input/textarea, чтобы клавиша C снова мгновенно открывала/закрывала чат
+      if (!isInput(target)) {
         const active = document.activeElement;
-        if (active && (
-          active.tagName === 'INPUT' ||
-          active.tagName === 'TEXTAREA' ||
-          active.isContentEditable ||
-          (typeof active.closest === 'function' && active.closest('input, textarea, [contenteditable="true"]'))
-        )) {
-          active.blur();
-        }
-        if (typeof window.focus === 'function') {
-          window.focus();
+        if (isInput(active)) {
+          if (typeof active.blur === 'function') active.blur();
+          if (typeof window.focus === 'function') window.focus();
         }
       }
     }, true);
