@@ -440,6 +440,7 @@
   }
 
   function closeActiveWindow() {
+    document.body.classList.remove('maxitet-pip-active');
     if (renderFrameId) {
       if (activeWindow && !activeWindow.closed) {
         try { activeWindow.cancelAnimationFrame(renderFrameId); } catch (e) {}
@@ -512,6 +513,7 @@
     }
 
     activeWindow = win;
+    document.body.classList.add('maxitet-pip-active');
     win.document.title = 'Lecture — ' + label;
     setupViewer(win, sourceMedia, false);
 
@@ -576,6 +578,7 @@
       });
 
       activeWindow = win;
+      document.body.classList.add('maxitet-pip-active');
       setupViewer(win, sourceMedia, true);
 
       win.addEventListener('pagehide', () => {
@@ -599,6 +602,7 @@
     const style = doc.createElement('style');
     style.textContent = `
       * { margin: 0; padding: 0; box-sizing: border-box; }
+      #maxitet-side-dock { display: none !important; }
       html, body {
         width: 100%;
         height: 100%;
@@ -2412,6 +2416,7 @@
       document.body.classList.remove('maxitet-zen-chat-open');
       resetZenChatPosition();
       resetZenDockPosition();
+      resetZenZoom();
       activeSlideShift = 0;
       const viewer = document.querySelector('.viewer.sharing__viewer, .viewer-main-img');
       if (viewer) viewer.style.transform = '';
@@ -2616,7 +2621,9 @@
       body.maxitet-zen-mode .paint,
       body.maxitet-zen-mode .paint__inner,
       body.maxitet-zen-mode #paint-container,
-      body.maxitet-zen-mode #paint-frame {
+      body.maxitet-zen-mode #paint-frame,
+      body.maxitet-zen-mode iframe.paint-frame {
+        pointer-events: none !important;
         height: 100% !important;
         width: 100% !important;
       }
@@ -3298,38 +3305,18 @@
         transform: scale(0.92) !important;
       }
 
-      /* Боковой док Дзена */
-      #maxitet-side-dock {
-        position: fixed !important;
-        right: 18px !important;
-        top: 50% !important;
-        transform: translateY(-50%) translateX(90px) !important;
+      /* Скрытие докбара в PiP и 100% окне */
+      body.maxitet-pip-active #maxitet-side-dock {
+        display: none !important;
         opacity: 0 !important;
         pointer-events: none !important;
-        background: rgba(16, 20, 28, 0.72) !important;
-        backdrop-filter: blur(14px) !important;
-        -webkit-backdrop-filter: blur(14px) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        border-radius: 20px !important;
-        padding: 10px 8px !important;
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        gap: 10px !important;
-        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55) !important;
-        z-index: 2147483645 !important;
-        transition: all 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
       }
 
-      body.maxitet-zen-mode #maxitet-side-dock {
-        transform: translateY(-50%) translateX(0) !important;
-        opacity: 1 !important;
-        pointer-events: all !important;
-      }
-
-      /* Плавающий стильный докбар в Zen-режиме при открытом чате:
-         ЕДИНЫЙ СТИЛЬ С ЧАТОМ (Liquid Slate Glass) */
-      body.maxitet-zen-mode.maxitet-zen-chat-open #maxitet-side-dock {
+      /* ═══════════ Унифицированный плавающий докбар Дзена (Liquid Slate Glass) ═══════════ */
+      /* Точь-в-точь по стилю чата: статичный, одинаковый при включенном и выключенном чате */
+      #maxitet-side-dock {
+        position: fixed !important;
+        display: none !important;
         flex-direction: row !important;
         align-items: center !important;
         padding: 7px 10px !important;
@@ -3340,113 +3327,63 @@
         width: max-content !important;
         max-width: calc(100vw - 16px) !important;
         box-sizing: border-box !important;
+        z-index: 2147483645 !important;
 
-        /* Точь-в-точь материалы чата: темное матовое стекло 78%, мягкий блюр 16px, тонкий кант */
-        opacity: 1 !important;
-        background: rgba(22, 24, 25, 0.78) !important;
-        backdrop-filter: blur(16px) !important;
-        -webkit-backdrop-filter: blur(16px) !important;
+        /* Точь-в-точь материалы чата: Slate Glass, 72% прозрачность, 3px размытие, 1px бордер */
+        background: rgba(22, 24, 25, 0.72) !important;
+        backdrop-filter: blur(3px) !important;
+        -webkit-backdrop-filter: blur(3px) !important;
         border: 1px solid rgba(255, 255, 255, 0.12) !important;
-        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.12) !important;
 
-        transition: background 0.22s ease,
-                    border-color 0.22s ease,
-                    box-shadow 0.22s ease,
-                    backdrop-filter 0.22s ease,
-                    -webkit-backdrop-filter 0.22s ease,
-                    transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        user-select: none !important;
       }
 
-      /* Кнопки внутри докбара — четкие, аккуратные, в стиле кнопок шапки чата */
-      body.maxitet-zen-mode.maxitet-zen-chat-open #maxitet-side-dock .maxitet-dock-btn {
-        width: 38px !important;
-        height: 38px !important;
-        border-radius: 11px !important;
-        background: rgba(255, 255, 255, 0.08) !important;
-        border: 1px solid rgba(255, 255, 255, 0.12) !important;
-        color: #e5e7eb !important;
+      body.maxitet-zen-mode #maxitet-side-dock {
+        display: flex !important;
         opacity: 1 !important;
+        pointer-events: all !important;
       }
 
-      body.maxitet-zen-mode.maxitet-zen-chat-open #maxitet-side-dock .maxitet-dock-btn:hover {
-        background: rgba(255, 255, 255, 0.18) !important;
-        border-color: rgba(255, 255, 255, 0.24) !important;
-        color: #ffffff !important;
-        transform: scale(1.05) !important;
-      }
-
-      body.maxitet-zen-mode.maxitet-zen-chat-open #maxitet-side-dock .maxitet-dock-drag-handle {
-        width: 18px !important;
-        height: 38px !important;
-        color: rgba(255, 255, 255, 0.6) !important;
-        opacity: 1 !important;
-      }
-
-      body.maxitet-zen-mode.maxitet-zen-chat-open #maxitet-side-dock .maxitet-dock-drag-handle:hover {
-        color: #ffffff !important;
-      }
-
-      /* По дефолту снизу фрейма чата (фрейм: right: 18px; width: 340px; центр = right: 188px) */
-      body.maxitet-zen-mode.maxitet-zen-chat-open #maxitet-side-dock:not(.is-dragged):not([style*="left"]) {
+      /* Положение по дефолту: снизу чата (или в правом нижнем углу при закрытом чате) */
+      body.maxitet-zen-mode #maxitet-side-dock:not(.is-dragged):not([style*="left"]) {
         right: 188px !important;
         top: min(calc(50% + min(265px, 42vh) + 12px), calc(100vh - 66px)) !important;
         transform: translateX(50%) !important;
       }
 
-      /* Свободное плавание после перетаскивания или когда позиционируется скриптом */
-      body.maxitet-zen-mode.maxitet-zen-chat-open #maxitet-side-dock.is-dragged,
-      body.maxitet-zen-mode.maxitet-zen-chat-open #maxitet-side-dock[style*="left"] {
+      /* Свободное плавание после перетаскивания пользователем */
+      body.maxitet-zen-mode #maxitet-side-dock.is-dragged,
+      body.maxitet-zen-mode #maxitet-side-dock[style*="left"] {
         right: auto !important;
         bottom: auto !important;
         transform: none !important;
       }
 
-      /* При наведении, фокусе или перетаскивании — сочный фокус */
-      body.maxitet-zen-mode.maxitet-zen-chat-open #maxitet-side-dock:hover,
-      body.maxitet-zen-mode.maxitet-zen-chat-open #maxitet-side-dock:focus-within,
-      body.maxitet-zen-mode.maxitet-zen-chat-open #maxitet-side-dock.is-dragging {
-        background: rgba(22, 24, 25, 0.92) !important;
-        backdrop-filter: blur(20px) !important;
-        -webkit-backdrop-filter: blur(20px) !important;
-        border-color: rgba(255, 255, 255, 0.22) !important;
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.18) !important;
-      }
-
-      /* Момент перетаскивания: мгновенное следование за курсором без задержек */
-      body.maxitet-zen-mode.maxitet-zen-chat-open #maxitet-side-dock.is-dragging {
+      /* Перетаскивание панели */
+      body.maxitet-zen-mode #maxitet-side-dock.is-dragging {
         user-select: none !important;
-        transition: opacity 0.2s ease, box-shadow 0.2s ease !important;
       }
 
-      /* Вертикальный разделитель в горизонтальном режиме */
-      body.maxitet-zen-mode.maxitet-zen-chat-open #maxitet-side-dock .maxitet-dock-divider {
-        width: 1px !important;
-        height: 22px !important;
-        background: rgba(255, 255, 255, 0.12) !important;
-        margin: 0 4px !important;
-      }
-
-      /* Ручка для перетаскивания (grip 6 точек) */
-      .maxitet-dock-drag-handle {
-        display: none;
-        align-items: center;
-        justify-content: center;
-        width: 16px;
-        height: 38px;
-        color: rgba(255, 255, 255, 0.45);
-        cursor: grab !important;
-        padding: 0 2px;
-        user-select: none;
-        touch-action: none !important;
-        transition: color 0.18s ease;
-      }
-
-      body.maxitet-zen-mode.maxitet-zen-chat-open #maxitet-side-dock .maxitet-dock-drag-handle {
+      /* Ручка для перетаскивания (grip 6 точек) - ВСЕГДА видна и при вкл, и при выкл чате */
+      #maxitet-side-dock .maxitet-dock-drag-handle {
         display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 18px !important;
+        height: 38px !important;
+        color: rgba(255, 255, 255, 0.5) !important;
+        cursor: grab !important;
+        padding: 0 2px !important;
+        user-select: none !important;
+        touch-action: none !important;
+        transition: color 0.15s ease !important;
       }
 
-      .maxitet-dock-drag-handle:hover {
-        color: rgba(255, 255, 255, 0.95) !important;
+      #maxitet-side-dock .maxitet-dock-drag-handle:hover {
+        color: #ffffff !important;
       }
 
       #maxitet-side-dock.is-dragging .maxitet-dock-drag-handle {
@@ -3454,70 +3391,203 @@
         color: #ffffff !important;
       }
 
-      .maxitet-dock-btn {
-        width: 42px !important;
-        height: 42px !important;
-        border-radius: 13px !important;
-        background: rgba(255, 255, 255, 0.06) !important;
-        border: 1px solid rgba(255, 255, 255, 0.08) !important;
-        color: #bfbfbf !important;
+      /* Кнопки внутри докбара - статичные, аккуратные */
+      /* Вертикальная ориентация докбара (переключение колёсиком по 6 точкам) */
+      #maxitet-side-dock.is-vertical {
+        flex-direction: column !important;
+        padding: 10px 7px !important;
+        gap: 8px !important;
+        width: auto !important;
+        height: max-content !important;
+      }
+      #maxitet-side-dock.is-vertical .maxitet-dock-divider {
+        width: 22px !important;
+        height: 1px !important;
+        margin: 4px 0 !important;
+      }
+      #maxitet-side-dock.is-vertical .maxitet-dock-drag-handle {
+        width: 38px !important;
+        height: 16px !important;
+      }
+
+      #maxitet-side-dock .maxitet-dock-btn {
+        width: 38px !important;
+        height: 38px !important;
+        border-radius: 11px !important;
+        background: rgba(255, 255, 255, 0.08) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        color: #e5e7eb !important;
         cursor: pointer !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
         position: relative !important;
-        transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1),
-                    background-color 0.2s ease,
-                    box-shadow 0.2s ease,
-                    color 0.2s ease !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+        transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease !important;
       }
 
-      .maxitet-dock-btn svg {
+      #maxitet-side-dock .maxitet-dock-btn svg {
         stroke: currentColor !important;
-        transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
       }
 
-      .maxitet-dock-btn:hover {
-        background: rgba(255, 255, 255, 0.16) !important;
-        color: #fff !important;
-        transform: scale(1.1) !important;
-        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35) !important;
+      #maxitet-side-dock .maxitet-dock-btn:hover {
+        background: rgba(255, 255, 255, 0.15) !important;
+        border-color: rgba(255, 255, 255, 0.22) !important;
+        color: #ffffff !important;
       }
 
-      .maxitet-dock-btn:hover svg {
-        transform: scale(1.08) !important;
+      #maxitet-side-dock .maxitet-dock-btn:active {
+        transform: scale(0.95) !important;
       }
 
-      .maxitet-dock-btn:active {
-        transform: scale(0.92) !important;
+      /* Вертикальный разделитель */
+      #maxitet-side-dock .maxitet-dock-divider {
+        width: 1px !important;
+        height: 22px !important;
+        background: rgba(255, 255, 255, 0.12) !important;
+        margin: 0 4px !important;
       }
 
-      .maxitet-dock-divider {
-        width: 22px !important;
-        height: 1px !important;
-        background: rgba(255, 255, 255, 0.1) !important;
-        margin: 2px 0 !important;
+      /* Активные состояния кнопок с гарантированной заливкой цвета */
+      #maxitet-side-dock .maxitet-dock-btn.is-active-cam {
+        background: #1890ff !important;
+        border-color: #40a9ff !important;
+        color: #ffffff !important;
+        box-shadow: 0 4px 14px rgba(24, 144, 255, 0.45) !important;
       }
 
-      /* Статусы заливкой */
-      .maxitet-dock-btn.is-active-mic {
+      #maxitet-side-dock .maxitet-dock-btn.is-active-mic {
         background: #27ae60 !important;
         border-color: #2ecc71 !important;
         color: #ffffff !important;
         box-shadow: 0 4px 14px rgba(39, 174, 96, 0.45) !important;
       }
 
-      .maxitet-dock-btn.is-active-cam {
-        background: #2980b9 !important;
-        border-color: #3498db !important;
-        color: #ffffff !important;
-        box-shadow: 0 4px 14px rgba(41, 128, 185, 0.45) !important;
-      }
-
-      .maxitet-dock-btn.is-active-chat {
+      #maxitet-side-dock .maxitet-dock-btn.is-active-chat {
         background: rgba(255, 255, 255, 0.22) !important;
         border-color: rgba(255, 255, 255, 0.35) !important;
         color: #ffffff !important;
+      }
+
+      /* ═══════════ Изменение размера чата в Дзене ═══════════ */
+      body.maxitet-zen-mode .dashboard-drawer {
+        min-width: 260px !important;
+        min-height: 260px !important;
+      }
+
+      /* Ручки ресайза активны ТОЛЬКО в Дзене при открытом чате */
+      body:not(.maxitet-zen-mode) .maxitet-chat-resize-handle,
+      body:not(.maxitet-zen-chat-open) .maxitet-chat-resize-handle {
+        display: none !important;
+      }
+
+      body.maxitet-zen-mode.maxitet-zen-chat-open .maxitet-chat-resize-handle {
+        position: absolute !important;
+        z-index: 200 !important;
+        touch-action: none !important;
+        user-select: none !important;
+      }
+      body.maxitet-zen-mode.maxitet-zen-chat-open .maxitet-chat-resize-handle.handle-l {
+        left: -5px !important;
+        top: 0 !important;
+        width: 10px !important;
+        height: 100% !important;
+        cursor: ew-resize !important;
+      }
+      body.maxitet-zen-mode.maxitet-zen-chat-open .maxitet-chat-resize-handle.handle-r {
+        right: -5px !important;
+        top: 0 !important;
+        width: 10px !important;
+        height: 100% !important;
+        cursor: ew-resize !important;
+      }
+      body.maxitet-zen-mode.maxitet-zen-chat-open .maxitet-chat-resize-handle.handle-b {
+        bottom: -5px !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 10px !important;
+        cursor: ns-resize !important;
+      }
+      body.maxitet-zen-mode.maxitet-zen-chat-open .maxitet-chat-resize-handle.handle-t {
+        top: -5px !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 10px !important;
+        cursor: ns-resize !important;
+      }
+      body.maxitet-zen-mode.maxitet-zen-chat-open .maxitet-chat-resize-handle.handle-bl {
+        left: -5px !important;
+        bottom: -5px !important;
+        width: 16px !important;
+        height: 16px !important;
+        cursor: nesw-resize !important;
+      }
+      body.maxitet-zen-mode.maxitet-zen-chat-open .maxitet-chat-resize-handle.handle-br {
+        right: -5px !important;
+        bottom: -5px !important;
+        width: 16px !important;
+        height: 16px !important;
+        cursor: nwse-resize !important;
+      }
+      body.maxitet-zen-mode.maxitet-zen-chat-open .maxitet-chat-resize-handle.handle-tl {
+        left: -5px !important;
+        top: -5px !important;
+        width: 16px !important;
+        height: 16px !important;
+        cursor: nwse-resize !important;
+      }
+      body.maxitet-zen-mode.maxitet-zen-chat-open .maxitet-chat-resize-handle.handle-tr {
+        right: -5px !important;
+        top: -5px !important;
+        width: 16px !important;
+        height: 16px !important;
+        cursor: nesw-resize !important;
+      }
+
+      /* ═══════════ Приближение демонстрации и презентации в Дзене ═══════════ */
+      body.maxitet-zen-mode .meeting__screen-sharing-area {
+        position: relative !important;
+        overflow: hidden !important;
+      }
+
+      body.maxitet-zen-mode .sharing__inner {
+        transform-origin: 0 0 !important;
+        will-change: transform !important;
+      }
+
+      body.maxitet-zen-mode .meeting__screen-sharing-area.can-pan {
+        cursor: grab !important;
+      }
+      body.maxitet-zen-mode .meeting__screen-sharing-area.is-panning {
+        cursor: grabbing !important;
+      }
+
+      /* Всплывающий индикатор зума (HUD) */
+      .maxitet-zen-zoom-hud {
+        position: fixed !important;
+        top: 22px !important;
+        left: 50% !important;
+        transform: translateX(-50%) translateY(-10px) !important;
+        background: rgba(22, 24, 25, 0.85) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.14) !important;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+        color: #f3f4f6 !important;
+        font-size: 13px !important;
+        font-weight: 500 !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+        padding: 5px 14px !important;
+        border-radius: 20px !important;
+        pointer-events: none !important;
+        z-index: 2147483646 !important;
+        opacity: 0 !important;
+        transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+      }
+      .maxitet-zen-zoom-hud.visible {
+        opacity: 1 !important;
+        transform: translateX(-50%) translateY(0) !important;
       }
     `;
     (document.head || document.documentElement).appendChild(style);
@@ -3546,19 +3616,35 @@
     if (!dock || dock._dragInitialized) return;
     dock._dragInitialized = true;
 
+    // Смена ориентации (горизонтальная / вертикальная) по колёсику мыши на ручке с 6 точками
+    const dockHandle = dock.querySelector('.maxitet-dock-drag-handle, #maxitet-dock-drag-handle');
+    if (dockHandle) {
+      dockHandle.addEventListener('wheel', (e) => {
+        if (!isZenModeActive) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const isVert = dock.classList.toggle('is-vertical');
+        if (chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ zenDockVertical: isVert });
+        }
+      }, { passive: false });
+    }
+
     let lastDockTapTime = 0;
     dock.addEventListener('pointerdown', (e) => {
-      if (!isZenModeActive || !document.body.classList.contains('maxitet-zen-chat-open')) return;
+      if (!isZenModeActive) return;
       if (e.button !== 0) return;
 
-      // Надежный дабл-клик по панели или ручке для сброса позиции
-      const now = Date.now();
-      if (now - lastDockTapTime < 380) {
-        resetZenDockPosition();
-        lastDockTapTime = 0;
-        return;
+      // Надежный дабл-клик по ручке с 6 точками для сброса позиции в дефолт
+      if (e.target.closest('.maxitet-dock-drag-handle, #maxitet-dock-drag-handle')) {
+        const now = Date.now();
+        if (now - lastDockTapTime < 380) {
+          resetZenDockPosition();
+          lastDockTapTime = 0;
+          return;
+        }
+        lastDockTapTime = now;
       }
-      lastDockTapTime = now;
 
       // Перетаскивание панели разрешено ТОЛЬКО за ручку с 6 точками (.maxitet-dock-drag-handle)
       if (!e.target.closest('.maxitet-dock-drag-handle, #maxitet-dock-drag-handle')) {
@@ -3702,11 +3788,17 @@
     drawer.style.removeProperty('right');
     drawer.style.removeProperty('bottom');
     drawer.style.removeProperty('transform');
+    drawer.style.removeProperty('width');
+    drawer.style.removeProperty('height');
+    chatResizeWidth = null;
+    chatResizeHeight = null;
+    window.dispatchEvent(new Event('resize'));
   }
 
   function initZenChatDraggable(drawer) {
     if (!drawer || drawer._chatDragInitialized) return;
     drawer._chatDragInitialized = true;
+    initZenChatResizable(drawer);
 
     const isDragArea = (target) => {
       if (!target) return false;
@@ -3721,12 +3813,11 @@
       }
       if (e.button !== 0) return;
 
-      // Надежный дабл-клик по 6 точкам или шапке окна чата для сброса позиции
+      // Надежный дабл-клик по 6 точкам или шапке окна чата для сброса позиции и дефолтного размера
       if (e.target.closest('.dashboard-toggler, .dashboard__header, .dashboard__tabs, .dashboard__header-top')) {
         const now = Date.now();
         if (now - lastChatTapTime < 380) {
           resetZenChatPosition();
-          resetZenDockPosition();
           lastChatTapTime = 0;
           return;
         }
@@ -3793,20 +3884,7 @@
         drawer.style.setProperty('right', 'auto', 'important');
         drawer.style.setProperty('bottom', 'auto', 'important');
 
-        // Если докбар ещё не был перетащен пользователем индивидуально, плавно центрируем его снизу чата
-        const dock = document.getElementById('maxitet-side-dock');
-        if (dock && !dock.classList.contains('is-dragged')) {
-          const dockRect = dock.getBoundingClientRect();
-          const dockW = dockRect.width || 180;
-          const dockH = dockRect.height || 54;
-          const dockLeft = Math.max(8, Math.min(window.innerWidth - dockW - 8, newLeft + (w - dockW) / 2));
-          const dockTop = Math.min(window.innerHeight - dockH - 8, newTop + h + 12);
-          dock.style.setProperty('left', `${dockLeft}px`, 'important');
-          dock.style.setProperty('top', `${dockTop}px`, 'important');
-          dock.style.setProperty('right', 'auto', 'important');
-          dock.style.setProperty('bottom', 'auto', 'important');
-          dock.style.setProperty('transform', 'none', 'important');
-        }
+// Чат и докбар полностью независимы друг от друга
       }
     };
 
@@ -3882,6 +3960,352 @@
     });
   }
 
+  // ─── Изменение размера чата в Дзен-режиме ───────────────────
+  let chatResizeWidth = null;
+  let chatResizeHeight = null;
+
+  function initZenChatResizable(drawer) {
+    if (!drawer || drawer._chatResizeInitialized) return;
+    drawer._chatResizeInitialized = true;
+
+    const handles = [
+      { dir: 'l', class: 'handle-l' },
+      { dir: 'r', class: 'handle-r' },
+      { dir: 'b', class: 'handle-b' },
+      { dir: 't', class: 'handle-t' },
+      { dir: 'bl', class: 'handle-bl' },
+      { dir: 'br', class: 'handle-br' },
+      { dir: 'tl', class: 'handle-tl' },
+      { dir: 'tr', class: 'handle-tr' },
+    ];
+
+    handles.forEach(h => {
+      const el = document.createElement('div');
+      el.className = `maxitet-chat-resize-handle ${h.class}`;
+      el.dataset.dir = h.dir;
+      drawer.appendChild(el);
+    });
+
+    let isResizing = false;
+    let resizeDir = '';
+    let startX = 0, startY = 0;
+    let startW = 0, startH = 0;
+    let startL = 0, startT = 0;
+
+    drawer.addEventListener('pointerdown', (e) => {
+      if (!isZenModeActive || !document.body.classList.contains('maxitet-zen-chat-open')) return;
+      if (e.button !== 0) return;
+
+      const handle = e.target.closest('.maxitet-chat-resize-handle');
+      if (!handle) return;
+
+      e.stopPropagation();
+      e.preventDefault();
+
+      resizeDir = handle.dataset.dir;
+      startX = e.clientX;
+      startY = e.clientY;
+
+      const rect = drawer.getBoundingClientRect();
+      startW = rect.width;
+      startH = rect.height;
+      startL = rect.left;
+      startT = rect.top;
+
+      drawer.style.setProperty('left', `${startL}px`, 'important');
+      drawer.style.setProperty('top', `${startT}px`, 'important');
+      drawer.style.setProperty('right', 'auto', 'important');
+      drawer.style.setProperty('bottom', 'auto', 'important');
+      drawer.style.setProperty('transform', 'none', 'important');
+      drawer.classList.add('is-dragged');
+
+      isResizing = true;
+      document.body.classList.add('maxitet-is-dragging-active');
+
+      try {
+        handle.setPointerCapture(e.pointerId);
+      } catch (_) {}
+    });
+
+    const onPointerMove = (e) => {
+      if (!isResizing) return;
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+
+      const minW = 260;
+      const minH = 260;
+
+      let newW = startW;
+      let newH = startH;
+      let newL = startL;
+      let newT = startT;
+
+      // Правый край (r): левый край startL неподвижен
+      if (resizeDir.includes('r')) {
+        const maxW = Math.max(minW, window.innerWidth - 8 - startL);
+        newW = Math.max(minW, Math.min(maxW, startW + dx));
+        newL = startL;
+      }
+
+      // Левый край (l): правый край R = startL + startW неподвижен
+      if (resizeDir.includes('l')) {
+        const R = startL + startW;
+        const maxW = Math.max(minW, R - 8);
+        newW = Math.max(minW, Math.min(maxW, startW - dx));
+        newL = R - newW;
+      }
+
+      // Нижний край (b): верхний край startT неподвижен
+      if (resizeDir.includes('b')) {
+        const maxH = Math.max(minH, window.innerHeight - 8 - startT);
+        newH = Math.max(minH, Math.min(maxH, startH + dy));
+        newT = startT;
+      }
+
+      // Верхний край (t): нижний край B = startT + startH неподвижен
+      if (resizeDir.includes('t')) {
+        const B = startT + startH;
+        const maxH = Math.max(minH, B - 8);
+        newH = Math.max(minH, Math.min(maxH, startH - dy));
+        newT = B - newH;
+      }
+
+      drawer.style.setProperty('width', `${newW}px`, 'important');
+      drawer.style.setProperty('height', `${newH}px`, 'important');
+      drawer.style.setProperty('left', `${newL}px`, 'important');
+      drawer.style.setProperty('top', `${newT}px`, 'important');
+
+      chatResizeWidth = newW;
+      chatResizeHeight = newH;
+    };
+
+    const stopResize = () => {
+      if (!isResizing) return;
+      isResizing = false;
+      document.body.classList.remove('maxitet-is-dragging-active');
+      window.dispatchEvent(new Event('resize'));
+    };
+
+    window.addEventListener('pointermove', onPointerMove, { passive: false });
+    window.addEventListener('pointerup', stopResize);
+    window.addEventListener('pointercancel', stopResize);
+
+    // Двойной клик по ручке ресайза возвращает дефолтный размер
+    drawer.addEventListener('dblclick', (e) => {
+      if (e.target.closest('.maxitet-chat-resize-handle')) {
+        resetZenChatPosition();
+      }
+    });
+  }
+
+  // ─── Приближение (Zoom & Pan) презентации и демонстрации экрана в Дзене ───
+  let zenZoom = 1;
+  let zenPanX = 0;
+  let zenPanY = 0;
+  let zenZoomHudTimeout = null;
+
+  function showZenZoomHud(val) {
+    let hud = document.getElementById('maxitet-zen-zoom-hud');
+    if (!hud) {
+      hud = document.createElement('div');
+      hud.id = 'maxitet-zen-zoom-hud';
+      hud.className = 'maxitet-zen-zoom-hud';
+      document.body.appendChild(hud);
+    }
+    hud.textContent = `${Math.round(val * 100)}%`;
+    hud.classList.add('visible');
+    clearTimeout(zenZoomHudTimeout);
+    zenZoomHudTimeout = setTimeout(() => {
+      hud.classList.remove('visible');
+    }, 1200);
+  }
+
+  function applyZenZoomTransform(container, inner) {
+    if (!inner) return;
+    if (zenZoom <= 1.001) {
+      inner.style.removeProperty('transform');
+      inner.style.removeProperty('transform-origin');
+      zenZoom = 1;
+      zenPanX = 0;
+      zenPanY = 0;
+      if (container) {
+        container.classList.remove('can-pan', 'is-panning');
+      }
+    } else {
+      inner.style.setProperty('transform-origin', '0 0', 'important');
+      inner.style.setProperty('transform', `translate(${Math.round(zenPanX)}px, ${Math.round(zenPanY)}px) scale(${zenZoom})`, 'important');
+      if (container) {
+        container.classList.add('can-pan');
+      }
+    }
+  }
+
+  function resetZenZoom() {
+    const inner = document.querySelector('.sharing__inner');
+    const container = document.querySelector('.meeting__screen-sharing-area');
+    zenZoom = 1;
+    zenPanX = 0;
+    zenPanY = 0;
+    applyZenZoomTransform(container, inner);
+  }
+
+  function triggerZenZoomStep(delta) {
+    if (!isZenModeActive) return;
+    const container = document.querySelector('.meeting__screen-sharing-area');
+    const inner = document.querySelector('.sharing__inner');
+    if (!container || !inner) return;
+
+    const rect = container.getBoundingClientRect();
+    const cx = rect.width / 2;
+    const cy = rect.height / 2;
+
+    const mediaX = (cx - zenPanX) / zenZoom;
+    const mediaY = (cy - zenPanY) / zenZoom;
+
+    let newZoom = Math.round((zenZoom + delta) * 100) / 100;
+    newZoom = Math.max(1, Math.min(10, newZoom));
+
+    if (newZoom <= 1.01) {
+      resetZenZoom();
+      showZenZoomHud(1);
+      return;
+    }
+
+    zenPanX = cx - mediaX * newZoom;
+    zenPanY = cy - mediaY * newZoom;
+    zenZoom = newZoom;
+
+    applyZenZoomTransform(container, inner);
+    showZenZoomHud(zenZoom);
+  }
+
+  function handleZenWheel(e) {
+    if (!isZenModeActive) return;
+    if (e.target && typeof e.target.closest === 'function' && e.target.closest('#maxitet-side-dock, .dashboard-drawer, .dashboard, .dashboard__content')) {
+      return;
+    }
+
+    const container = document.querySelector('.meeting__screen-sharing-area');
+    const inner = document.querySelector('.sharing__inner');
+    if (!container || !inner) return;
+
+    const rect = container.getBoundingClientRect();
+    const clientX = (e.clientX != null && e.clientX > 0) ? e.clientX : (rect.left + rect.width / 2);
+    const clientY = (e.clientY != null && e.clientY > 0) ? e.clientY : (rect.top + rect.height / 2);
+
+    if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
+      return;
+    }
+
+    if (typeof e.preventDefault === 'function') e.preventDefault();
+    if (typeof e.stopPropagation === 'function') e.stopPropagation();
+
+    const relX = clientX - rect.left;
+    const relY = clientY - rect.top;
+    const mediaX = (relX - zenPanX) / zenZoom;
+    const mediaY = (relY - zenPanY) / zenZoom;
+
+    const step = e.shiftKey ? 0.25 : 0.08;
+    const factor = e.deltaY < 0 ? (1 + step) : (1 - step);
+    let newZoom = Math.max(1, Math.min(10, Math.round(zenZoom * factor * 100) / 100));
+
+    if (newZoom <= 1.01) {
+      resetZenZoom();
+      showZenZoomHud(1);
+    } else {
+      zenPanX = relX - mediaX * newZoom;
+      zenPanY = relY - mediaY * newZoom;
+
+      const minPanX = rect.width * (1 - newZoom) - 100;
+      const maxPanX = 100;
+      const minPanY = rect.height * (1 - newZoom) - 100;
+      const maxPanY = 100;
+      zenPanX = Math.max(minPanX, Math.min(maxPanX, zenPanX));
+      zenPanY = Math.max(minPanY, Math.min(maxPanY, zenPanY));
+
+      zenZoom = newZoom;
+      applyZenZoomTransform(container, inner);
+      showZenZoomHud(zenZoom);
+    }
+  }
+
+  function initZenZoomPan() {
+    let isPanning = false;
+    let panStartX = 0, panStartY = 0;
+    let panInitialX = 0, panInitialY = 0;
+
+    window.addEventListener('wheel', handleZenWheel, { passive: false });
+
+    window.addEventListener('pointerdown', (e) => {
+      if (!isZenModeActive || zenZoom <= 1) return;
+      if (e.button !== 0) return;
+      if (e.target && typeof e.target.closest === 'function' && e.target.closest('#maxitet-side-dock, .dashboard-drawer, .dashboard, .dashboard__content')) {
+        return;
+      }
+      const container = document.querySelector('.meeting__screen-sharing-area');
+      const inner = document.querySelector('.sharing__inner');
+      if (!container || !inner) return;
+
+      const rect = container.getBoundingClientRect();
+      if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
+        return;
+      }
+
+      if (e.detail === 2) {
+        resetZenZoom();
+        showZenZoomHud(1);
+        return;
+      }
+
+      isPanning = true;
+      panStartX = e.clientX;
+      panStartY = e.clientY;
+      panInitialX = zenPanX;
+      panInitialY = zenPanY;
+      container.classList.add('is-panning');
+
+      try {
+        container.setPointerCapture(e.pointerId);
+      } catch (_) {}
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      if (!isPanning || zenZoom <= 1) return;
+      const container = document.querySelector('.meeting__screen-sharing-area');
+      const inner = document.querySelector('.sharing__inner');
+      if (!container || !inner) return;
+
+      const dx = e.clientX - panStartX;
+      const dy = e.clientY - panStartY;
+      const rect = container.getBoundingClientRect();
+
+      let targetX = panInitialX + dx;
+      let targetY = panInitialY + dy;
+
+      const minPanX = rect.width * (1 - zenZoom) - 150;
+      const maxPanX = 150;
+      const minPanY = rect.height * (1 - zenZoom) - 150;
+      const maxPanY = 150;
+
+      zenPanX = Math.max(minPanX, Math.min(maxPanX, targetX));
+      zenPanY = Math.max(minPanY, Math.min(maxPanY, targetY));
+
+      applyZenZoomTransform(container, inner);
+    });
+
+    const stopPan = () => {
+      if (!isPanning) return;
+      isPanning = false;
+      const container = document.querySelector('.meeting__screen-sharing-area');
+      if (container) container.classList.remove('is-panning');
+    };
+
+    window.addEventListener('pointerup', stopPan);
+    window.addEventListener('pointercancel', stopPan);
+  }
+
   function toggleZenChat(forceOpen) {
     const drawer = document.querySelector('.dashboard-drawer');
     if (!drawer) return;
@@ -3893,11 +4317,8 @@
       : !drawer.classList.contains('maxitet-floating-chat-open');
 
     drawer.classList.toggle('maxitet-floating-chat-open', shouldOpen);
-    if (!shouldOpen) {
-      resetZenChatPosition();
-      resetZenDockPosition();
-    } else {
-      resetZenDockPosition();
+    if (shouldOpen) {
+      initZenChatResizable(drawer);
     }
     syncZenDock();
     setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
@@ -3991,8 +4412,7 @@
       const nowOpen = open && isZenModeActive;
       document.body.classList.toggle('maxitet-zen-chat-open', nowOpen);
       if (wasOpen && !nowOpen) {
-        resetZenChatPosition();
-        resetZenDockPosition();
+        // Позиция чата и докбара сохраняется, чтобы не прыгать при повторном открытии
       }
       updateSlideShift();
     }
@@ -4233,6 +4653,7 @@
     document.getElementById('maxitet-dock-exit')?.remove();
     injectSideZenDock();
     injectMessageActionButtons();
+    initZenZoomPan();
 
     if (chrome.storage && chrome.storage.local) {
       chrome.storage.local.get({ zenMode: false, smartDarkMode: false, smartDarkPreset: 'maxitet' }, (res) => {
@@ -4304,6 +4725,31 @@
       const code = e.code;
       const key = (e.key || '').toLowerCase();
 
+      // Хоткеи зума демонстрации и презентации (+ / -, 0)
+      if (isZenModeActive) {
+        if (code === 'Equal' || key === '+' || key === '=' || code === 'NumpadAdd') {
+          if (typeof e.preventDefault === 'function') e.preventDefault();
+          if (typeof e.stopPropagation === 'function') e.stopPropagation();
+          triggerZenZoomStep(0.15);
+          return;
+        }
+        if (code === 'Minus' || key === '-' || key === '_' || code === 'NumpadSubtract') {
+          if (typeof e.preventDefault === 'function') e.preventDefault();
+          if (typeof e.stopPropagation === 'function') e.stopPropagation();
+          triggerZenZoomStep(-0.15);
+          return;
+        }
+        if (code === 'Digit0' || key === '0' || code === 'Numpad0') {
+          if (zenZoom > 1.01) {
+            if (typeof e.preventDefault === 'function') e.preventDefault();
+            if (typeof e.stopPropagation === 'function') e.stopPropagation();
+            resetZenZoom();
+            showZenZoomHud(1);
+            return;
+          }
+        }
+      }
+
       const isChatKey = code === 'KeyC' || key === 'c' || key === 'с';
       const isZenKey = code === 'KeyZ' || key === 'z' || key === 'я';
       const isDarkKey = code === 'KeyD' || key === 'd' || key === 'в';
@@ -4363,6 +4809,9 @@
           win.__maxitet_hotkeys_hooked = true;
           win.addEventListener('keydown', handleKeyDown, true);
           win.addEventListener('contextmenu', unblockContextMenu, true);
+          win.addEventListener('wheel', (e) => {
+            if (isZenModeActive) handleZenWheel(e);
+          }, { passive: false });
         }
         if (doc && !doc.__maxitet_hotkeys_hooked) {
           doc.__maxitet_hotkeys_hooked = true;
