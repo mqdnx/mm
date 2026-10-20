@@ -2412,14 +2412,16 @@
 
     const drawer = document.querySelector('.dashboard-drawer');
     if (!isZenModeActive) {
-      if (drawer) drawer.classList.remove('maxitet-floating-chat-open');
+      cleanupZenChatStyles(drawer);
       document.body.classList.remove('maxitet-zen-chat-open');
-      resetZenChatPosition();
-      resetZenDockPosition();
+      // Позиция и размер чата и докбара сохраняются при выключении/включении Дзена
       resetZenZoom();
       activeSlideShift = 0;
       const viewer = document.querySelector('.viewer.sharing__viewer, .viewer-main-img');
       if (viewer) viewer.style.transform = '';
+    } else {
+      restoreZenChatGeometry(drawer);
+      restoreZenDockGeometry();
     }
 
     if (chrome.storage && chrome.storage.local) {
@@ -2720,7 +2722,7 @@
         display: flex !important;
         flex-direction: column !important;
         justify-content: space-between !important;
-        padding: 0 14px 14px 14px !important;
+        padding: 0 8px 8px 8px !important;
         overflow: hidden !important;
       }
 
@@ -2733,7 +2735,7 @@
         box-sizing: border-box !important;
         display: flex !important;
         flex-direction: column !important;
-        padding: 8px 12px 14px 12px !important;
+        padding: 6px 8px 8px 8px !important;
         overflow: hidden !important;
       }
 
@@ -2752,19 +2754,6 @@
         overflow: hidden !important;
       }
 
-      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat-actions {
-        flex: 0 0 auto !important;
-        min-height: auto !important;
-        margin-top: 6px !important;
-        padding: 0 !important;
-        box-sizing: border-box !important;
-      }
-
-      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-input {
-        box-sizing: border-box !important;
-        margin-bottom: 0 !important;
-      }
-
       /* Перетаскивание окна чата в Zen-режиме */
       body.maxitet-zen-mode .dashboard-drawer.is-dragged {
         right: auto !important;
@@ -2779,8 +2768,21 @@
         box-shadow: 0 24px 70px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.24) !important;
       }
 
-      /* В Zen-режиме: замена 3 полос (бургера) на 6 точек захвата для перетаскивания окна */
-      body.maxitet-zen-mode .dashboard-drawer .dashboard-toggler {
+      /* Скрываем внешнюю нативную кнопку шторки в Zen-режиме, устраняя пустое пространство сверху */
+      body.maxitet-zen-mode .dashboard-drawer > .dashboard-drawer__toggler,
+      body.maxitet-zen-mode .dashboard-drawer > .dashboard-toggler,
+      body.maxitet-zen-mode .dashboard-drawer .dashboard-drawer__toggler {
+        display: none !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .dashboard {
+        padding-top: 0 !important;
+        margin-top: 0 !important;
+      }
+
+      /* В Zen-режиме: компактные 6 точек захвата для перетаскивания окна в шапке */
+      body.maxitet-zen-mode .dashboard-drawer .dashboard__header-top .dashboard-toggler {
         cursor: grab !important;
         position: relative !important;
         display: inline-flex !important;
@@ -2788,24 +2790,24 @@
         justify-content: center !important;
         background: rgba(255, 255, 255, 0.08) !important;
         border: 1px solid rgba(255, 255, 255, 0.14) !important;
-        border-radius: 8px !important;
-        width: 32px !important;
-        height: 32px !important;
-        min-width: 32px !important;
+        border-radius: 6px !important;
+        width: 20px !important;
+        height: 20px !important;
+        min-width: 20px !important;
         padding: 0 !important;
         transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease !important;
       }
 
-      body.maxitet-zen-mode .dashboard-drawer .dashboard-toggler:hover {
-        background: rgba(255, 255, 255, 0.16) !important;
-        border-color: rgba(255, 255, 255, 0.24) !important;
+      body.maxitet-zen-mode .dashboard-drawer .dashboard__header-top .dashboard-toggler:hover {
+        background: rgba(255, 255, 255, 0.18) !important;
+        border-color: rgba(255, 255, 255, 0.26) !important;
         transform: scale(1.05) !important;
       }
 
-      body.maxitet-zen-mode .dashboard-drawer.is-dragging .dashboard-toggler,
-      body.maxitet-zen-mode .dashboard-drawer .dashboard-toggler:active {
+      body.maxitet-zen-mode .dashboard-drawer.is-dragging .dashboard__header-top .dashboard-toggler,
+      body.maxitet-zen-mode .dashboard-drawer .dashboard__header-top .dashboard-toggler:active {
         cursor: grabbing !important;
-        background: rgba(255, 255, 255, 0.22) !important;
+        background: rgba(255, 255, 255, 0.24) !important;
       }
 
       /* Скрываем нативные 3 полосы бургер-меню */
@@ -2816,31 +2818,158 @@
       }
 
       /* 6 аккуратных точек перетаскивания через SVG mask */
-      body.maxitet-zen-mode .dashboard-drawer .dashboard-toggler::before {
+      body.maxitet-zen-mode .dashboard-drawer .dashboard__header-top .dashboard-toggler::before {
         content: '' !important;
         display: block !important;
-        width: 14px !important;
-        height: 18px !important;
-        background-color: #e5e7eb !important;
+        width: 10px !important;
+        height: 14px !important;
+        background-color: #cbd5e1 !important;
         -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 16'%3E%3Ccircle cx='3' cy='3' r='1.5' fill='%23000'/%3E%3Ccircle cx='7' cy='3' r='1.5' fill='%23000'/%3E%3Ccircle cx='3' cy='8' r='1.5' fill='%23000'/%3E%3Ccircle cx='7' cy='8' r='1.5' fill='%23000'/%3E%3Ccircle cx='3' cy='13' r='1.5' fill='%23000'/%3E%3Ccircle cx='7' cy='13' r='1.5' fill='%23000'/%3E%3C/svg%3E") no-repeat center / contain !important;
         mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 16'%3E%3Ccircle cx='3' cy='3' r='1.5' fill='%23000'/%3E%3Ccircle cx='7' cy='3' r='1.5' fill='%23000'/%3E%3Ccircle cx='3' cy='8' r='1.5' fill='%23000'/%3E%3Ccircle cx='7' cy='8' r='1.5' fill='%23000'/%3E%3Ccircle cx='3' cy='13' r='1.5' fill='%23000'/%3E%3Ccircle cx='7' cy='13' r='1.5' fill='%23000'/%3E%3C/svg%3E") no-repeat center / contain !important;
-        opacity: 0.75 !important;
-        transition: opacity 0.2s ease !important;
+        opacity: 0.8 !important;
+        transition: opacity 0.2s ease, background-color 0.2s ease !important;
       }
 
-      body.maxitet-zen-mode .dashboard-drawer .dashboard-toggler:hover::before {
+      body.maxitet-zen-mode .dashboard-drawer .dashboard__header-top .dashboard-toggler:hover::before {
         opacity: 1 !important;
         background-color: #ffffff !important;
       }
 
-      /* Шапка окна чата имеет обычный курсор — перетаскивание строго за 6 точек */
+      /* Компактная шапка чата (высота 28px) */
       body.maxitet-zen-mode .dashboard-drawer .dashboard__header {
+        min-height: 28px !important;
+        height: 28px !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: rgba(255, 255, 255, 0.03) !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
+        display: flex !important;
+        align-items: center !important;
+        overflow: hidden !important;
         cursor: default !important;
         user-select: none !important;
       }
 
+      body.maxitet-zen-mode .dashboard-drawer .dashboard__header-top {
+        min-height: 28px !important;
+        height: 28px !important;
+        padding: 0 8px !important;
+        margin: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        background: transparent !important;
+        border-bottom: none !important;
+      }
+
+      /* Группа табов: единая flex-строка, строго по центру */
+      body.maxitet-zen-mode .dashboard-drawer .dashboard__tabs {
+        margin: 0 !important;
+        gap: 6px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        height: 22px !important;
+      }
+
+      /* Единый стиль пилюль для обоих табов (Чат и Участники): одинаковая высота 22px, идеально ровно */
       body.maxitet-zen-mode .dashboard-drawer .dashboard-tab {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        height: 22px !important;
+        min-height: 22px !important;
+        max-height: 22px !important;
+        padding: 0 6px !important;
+        position: relative !important;
+        background: rgba(255, 255, 255, 0.06) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 6px !important;
         cursor: pointer !important;
+        box-sizing: border-box !important;
+        transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.15s ease !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer .dashboard-tab:hover {
+        background: rgba(255, 255, 255, 0.12) !important;
+        border-color: rgba(255, 255, 255, 0.2) !important;
+      }
+
+      /* Активный таб: мягкая оранжевая подсветка рамки и фона */
+      body.maxitet-zen-mode .dashboard-drawer .dashboard-tab.dashboard-tab--active {
+        background: rgba(250, 140, 22, 0.18) !important;
+        border-color: rgba(250, 140, 22, 0.45) !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer .dashboard-tab--active::after {
+        display: none !important;
+      }
+
+      /* Скрываем надписи "Чат" и "Участники" */
+      body.maxitet-zen-mode .dashboard-drawer .dashboard-tab__title {
+        display: none !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer .dashboard-tab .dashboard-tab__icon-wrap {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        height: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
+      /* Таб 1 (Чат): иконка 13px ровно по центру пилюли */
+      body.maxitet-zen-mode .dashboard-drawer .dashboard-tab:first-child {
+        width: 28px !important;
+        min-width: 28px !important;
+        padding: 0 !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer .dashboard-tab:first-child .icon-container,
+      body.maxitet-zen-mode .dashboard-drawer .dashboard-tab:first-child svg {
+        width: 13px !important;
+        height: 13px !important;
+        min-width: 13px !important;
+        max-width: 13px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        color: var(--orange-6, #f97316) !important;
+        fill: currentColor !important;
+      }
+
+      /* Таб 2 (Участники): скрываем силуэты людей */
+      body.maxitet-zen-mode .dashboard-drawer .dashboard-tab:nth-child(2) .icon-container,
+      body.maxitet-zen-mode .dashboard-drawer .dashboard-tab:nth-child(2) svg {
+        display: none !important;
+      }
+
+      /* Число участников в Табе 2: единая высота 22px, шрифт 11px, ровно на одной линии с чатом */
+      body.maxitet-zen-mode .dashboard-drawer .dashboard-tab:nth-child(2) {
+        min-width: 28px !important;
+        padding: 0 5px !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer .dashboard-tab .dashboard-tab__badge {
+        position: static !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 11px !important;
+        font-weight: 600 !important;
+        line-height: 1 !important;
+        color: #22c55e !important;
+        background: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        min-width: unset !important;
+        height: auto !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer .dashboard-tab.dashboard-tab--active .dashboard-tab__badge {
+        color: #ffffff !important;
       }
 
       /* Глобальная защита от залипания и помех iframes/video при активном перетаскивании */
@@ -2920,29 +3049,146 @@
         border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
       }
 
-      /* Сообщения в плавающем чате — аккуратные полупрозрачные блоки */
+      /* Сообщения в Zen-режиме: растянуты на всю ширину с аккуратным отступом 4px от краёв окна */
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat__wrap:not([style*="display: none"]) {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        height: 100% !important;
+        max-height: 100% !important;
+        box-sizing: border-box !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+        padding: 0 4px 6px 4px !important;
+        overflow: hidden !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat-scroller {
+        padding: 0 2px !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat-scroller__item {
+        margin-bottom: 5px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-bubble {
+        position: relative !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        display: flex !important;
+        flex-direction: column !important;
+        margin-bottom: 5px !important;
+        padding: 0 !important;
+        gap: 0 !important;
+      }
+
+      /* Скрываем массивные уголки-хвосты сообщений платформы */
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-bubble__corn {
+        display: none !important;
+      }
+
+      /* Аватарка спозиционирована в левом верхнем углу блока */
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-bubble__avatar-wrap {
+        position: absolute !important;
+        left: 6px !important;
+        top: 5px !important;
+        right: auto !important;
+        bottom: auto !important;
+        z-index: 2 !important;
+        pointer-events: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 16px !important;
+        height: 16px !important;
+        min-width: 16px !important;
+        max-width: 16px !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-bubble .avatar.message__avatar,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-bubble .user-avatar,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-bubble [class*="avatar"] {
+        width: 16px !important;
+        height: 16px !important;
+        min-width: 16px !important;
+        max-width: 16px !important;
+        border-radius: 50% !important;
+        font-size: 7.5px !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-bubble .avatar__letters {
+        font-size: 7.5px !important;
+        line-height: 16px !important;
+      }
+
+      /* Блоки сообщений занимают ВСЮ ширину чата (100%) с отступом 4px от краёв контейнера */
       body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-bubble__text-block,
-      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-bubble__text-block_opponent {
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-bubble__text-block_opponent,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-bubble__text-block_self,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-bubble__text-block_private {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: unset !important;
+        box-sizing: border-box !important;
+        position: relative !important;
+        border-radius: 8px !important;
         background-color: rgba(255, 255, 255, 0.08) !important;
         border: 1px solid rgba(255, 255, 255, 0.06) !important;
         backdrop-filter: none !important;
+        margin: 0 !important;
+        /* Текст сообщения начинается с самого левого края (красная отметка 6px), справа отступ 32px под время */
+        padding: 4px 32px 4px 6px !important;
       }
 
+      /* Приватные сообщения — зелёный акцент */
       body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-bubble__text-block_private {
         background-color: rgba(82, 196, 26, 0.14) !important;
         border: 1px solid rgba(82, 196, 26, 0.22) !important;
-        backdrop-filter: none !important;
+        border-left: 2.5px solid #22c55e !important;
       }
 
-      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-bubble__text-block_self {
-        background-color: rgba(24, 144, 255, 0.16) !important;
-        border: 1px solid rgba(24, 144, 255, 0.25) !important;
-        backdrop-filter: none !important;
+      /* Строка заголовка (Имя автора): отступ 20px слева, чтобы не залезать на аватарку, и 5px отступ снизу до текста */
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-bubble__title {
+        display: flex !important;
+        align-items: center !important;
+        min-height: 16px !important;
+        margin-bottom: 5px !important;
+        padding-left: 20px !important;
+        padding-right: 0 !important;
       }
 
-      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-bubble__corn svg,
-      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-bubble__corn path {
-        opacity: 0.15 !important;
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-bubble__name {
+        font-size: 11px !important;
+        line-height: 14px !important;
+      }
+
+      /* Контейнер текста: начинается С САМОГО ЛЕВОГО КРАЯ (с красной отметки под аватаркой) */
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-bubble__text-container {
+        padding-left: 0 !important;
+        margin-left: 0 !important;
+        width: 100% !important;
+        display: block !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-bubble__text {
+        font-size: 11.5px !important;
+        line-height: 14px !important;
+        color: #f1f5f9 !important;
+        word-break: break-word !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-bubble__time {
+        position: absolute !important;
+        right: 6px !important;
+        bottom: 3px !important;
+        font-size: 9px !important;
+        line-height: 11px !important;
+        opacity: 0.7 !important;
       }
 
       /* Опросы и голосования в Zen-режиме — единый стиль «жидкое стекло» */
@@ -3060,25 +3306,241 @@
         background-color: transparent !important;
       }
 
-      /* Поле ввода сообщения и переключатель «Только преподавателю» */
-      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-input {
-        background-color: rgba(255, 255, 255, 0.06) !important;
-        border-color: rgba(255, 255, 255, 0.12) !important;
+      /* Панель ввода Варианта 2 (Action Bar Group):
+         Поле ввода + кнопка [🎓 Только преподу] + кнопка [➤ Отправить] в ОДНУ компактную 32px строку!
+         Ликвидирована отдельная строка для тумблера «Только преподавателю», сжиравшая высоту. */
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat-actions {
+        position: relative !important;
+        margin-top: 4px !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        min-height: 32px !important;
+        background: transparent !important;
       }
 
-      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat-actions,
-      body.maxitet-smart-dark .chat-actions {
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-input {
+        width: 100% !important;
+        box-sizing: border-box !important;
+        min-height: 32px !important;
+        height: auto !important;
+        max-height: 70px !important;
+        padding: 3px 64px 3px 6px !important; /* место справа для двух 26px кнопок */
+        border-radius: 8px !important;
+        background-color: rgba(255, 255, 255, 0.06) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        display: flex !important;
+        align-items: flex-end !important;
+        margin: 0 !important;
+        position: relative !important;
+        transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-input:hover,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-input:focus-within {
+        border-color: rgba(255, 255, 255, 0.22) !important;
+        background-color: rgba(255, 255, 255, 0.09) !important;
+      }
+
+      /* Поле ввода: 1 строка без скроллбара, 2-3 строки расширяется по вертикали, 4+ строки скролл */
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-input .textarea {
+        field-sizing: content;
+        font-size: 11.5px !important;
+        line-height: 15px !important;
+        min-height: 19px !important;
+        max-height: 49px !important;
+        height: auto !important;
+        padding: 2px 0 !important;
+        margin: 0 4px !important;
+        color: #ffffff !important;
+        resize: none !important;
+        overflow-y: hidden; /* по умолчанию прокрутка полностью отключена */
+        box-sizing: border-box !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-input .textarea::-webkit-scrollbar {
+        width: 3px !important;
+        height: 0 !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-input .textarea::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.25) !important;
+        border-radius: 3px !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-input .textarea::-webkit-scrollbar-track {
+        background: transparent !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-input .emoji__button {
+        align-self: flex-end !important;
+        margin-bottom: 2px !important;
+      }
+
+      /* Кнопка отправки сообщения — прижата к нижнему правому углу */
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-input__send-button {
+        position: absolute !important;
+        right: 3px !important;
+        bottom: 3px !important;
+        top: auto !important;
+        transform: none !important;
+        width: 26px !important;
+        height: 26px !important;
+        min-width: 26px !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: var(--orange-6) !important;
+        border-radius: 6px !important;
+        color: #000000 !important;
+        border: none !important;
+        cursor: pointer !important;
+        z-index: 5 !important;
+        transition: transform 0.15s ease, background-color 0.15s ease !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .message-input__send-button:hover {
+        transform: scale(1.06) !important;
+      }
+
+      /* Кнопка «Только преподавателю» (Вариант 2) — расположена слева от кнопки отправки */
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat-actions__tools {
+        position: absolute !important;
+        right: 33px !important;
+        bottom: 3px !important;
+        top: auto !important;
+        transform: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        z-index: 5 !important;
+        display: flex !important;
+        align-items: center !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat-actions__tools-switch-wrapper {
+        width: 26px !important;
+        height: 26px !important;
+        min-width: 26px !important;
+        padding: 0 !important;
+        border-radius: 6px !important;
+        background: rgba(255, 255, 255, 0.07) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+        position: relative !important;
+        transition: all 0.18s ease !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat-actions__tools-switch-wrapper:hover {
+        background: rgba(255, 255, 255, 0.16) !important;
+        border-color: rgba(255, 255, 255, 0.24) !important;
+        transform: scale(1.06) !important;
+      }
+
+      /* Скрываем громоздкую надпись «Только преподавателю» */
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat-actions__tools-switch-text {
+        display: none !important;
+      }
+
+      /* Скрываем дефолтный свитчер и оверлеи */
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .izi-switch {
+        width: 16px !important;
+        height: 16px !important;
+        min-width: 16px !important;
+        max-width: 16px !important;
+        position: relative !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: transparent !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .izi-switch__rail,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .izi-switch__circle,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .izi-switch__disable-overlay {
+        display: none !important;
+      }
+
+      /* Иконка шапочки преподавателя 🎓 через SVG mask */
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .izi-switch::before {
+        content: '' !important;
+        display: block !important;
+        width: 15px !important;
+        height: 15px !important;
+        background-color: #cbd5e1 !important;
+        -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 10v6M2 10l10-5 10 5-10 5z'/%3E%3Cpath d='M6 12v5c3 3 9 3 12 0v-5'/%3E%3C/svg%3E") no-repeat center / contain !important;
+        mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 10v6M2 10l10-5 10 5-10 5z'/%3E%3Cpath d='M6 12v5c3 3 9 3 12 0v-5'/%3E%3C/svg%3E") no-repeat center / contain !important;
+        transition: background-color 0.18s ease, transform 0.18s ease !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat-actions__tools-switch-wrapper:hover .izi-switch::before {
+        background-color: #ffffff !important;
+      }
+
+      /* Активное состояние кнопки «Только преподавателю»: зеленый фон с изумрудным свечением */
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat-actions__tools-switch-wrapper:has(.checked),
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat-actions__tools-switch-wrapper:has(input:checked) {
+        background: #16a34a !important;
+        border-color: #22c55e !important;
+        box-shadow: 0 0 10px rgba(34, 197, 94, 0.45) !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat-actions__tools-switch-wrapper:has(.checked) .izi-switch::before,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat-actions__tools-switch-wrapper:has(input:checked) .izi-switch::before {
+        background-color: #ffffff !important;
+        transform: scale(1.08) !important;
+      }
+
+      /* Приватный режим: мягкая зеленая подсветка поля ввода */
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open:has(.chat-actions__tools-switch-wrapper:has(.checked)) .message-input,
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open:has(.chat-actions__tools-switch-wrapper:has(input:checked)) .message-input {
+        border-color: rgba(34, 197, 94, 0.45) !important;
+        background-color: rgba(34, 197, 94, 0.06) !important;
+        box-shadow: 0 0 12px rgba(34, 197, 94, 0.15) !important;
+      }
+
+      /* Всплывающая подсказка при наведении на кнопку [🎓] */
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat-actions__tools-switch-wrapper::after {
+        content: 'Только преподавателю' !important;
+        position: absolute !important;
+        bottom: calc(100% + 6px) !important;
+        right: 0 !important;
+        padding: 3px 7px !important;
+        border-radius: 6px !important;
+        background: rgba(16, 20, 28, 0.94) !important;
+        backdrop-filter: blur(8px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        color: #ffffff !important;
+        font-size: 10.5px !important;
+        font-weight: 500 !important;
+        white-space: nowrap !important;
+        pointer-events: none !important;
+        opacity: 0 !important;
+        transform: translateY(3px) !important;
+        transition: opacity 0.18s ease, transform 0.18s ease !important;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5) !important;
+        z-index: 9999 !important;
+      }
+
+      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat-actions__tools-switch-wrapper:hover::after {
+        opacity: 1 !important;
+        transform: translateY(0) !important;
+      }
+
+      /* Родные стили для обычного режима (smart-dark) остаются полностью нетронутыми */
+      body:not(.maxitet-zen-mode).maxitet-smart-dark .chat-actions {
         background: transparent !important;
         padding: 4px 0 6px !important;
       }
 
-      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat-actions__tools,
-      body.maxitet-smart-dark .chat-actions__tools {
+      body:not(.maxitet-zen-mode).maxitet-smart-dark .chat-actions__tools {
         margin-bottom: 6px !important;
       }
 
-      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat-actions__tools-switch-wrapper,
-      body.maxitet-smart-dark .chat-actions__tools-switch-wrapper {
+      body:not(.maxitet-zen-mode).maxitet-smart-dark .chat-actions__tools-switch-wrapper {
         display: inline-flex !important;
         align-items: center !important;
         gap: 9px !important;
@@ -3091,14 +3553,12 @@
         transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease !important;
       }
 
-      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat-actions__tools-switch-wrapper:hover,
-      body.maxitet-smart-dark .chat-actions__tools-switch-wrapper:hover {
+      body:not(.maxitet-zen-mode).maxitet-smart-dark .chat-actions__tools-switch-wrapper:hover {
         background: rgba(255, 255, 255, 0.1) !important;
         border-color: rgba(255, 255, 255, 0.18) !important;
       }
 
-      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat-actions__tools-switch-text,
-      body.maxitet-smart-dark .chat-actions__tools-switch-text {
+      body:not(.maxitet-zen-mode).maxitet-smart-dark .chat-actions__tools-switch-text {
         color: #d1d5db !important;
         font-size: 12px !important;
         font-weight: 500 !important;
@@ -3107,22 +3567,17 @@
         transition: color 0.18s ease !important;
       }
 
-      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat-actions__tools-switch-wrapper:hover .chat-actions__tools-switch-text,
-      body.maxitet-smart-dark .chat-actions__tools-switch-wrapper:hover .chat-actions__tools-switch-text {
+      body:not(.maxitet-zen-mode).maxitet-smart-dark .chat-actions__tools-switch-wrapper:hover .chat-actions__tools-switch-text {
         color: #ffffff !important;
       }
 
-      /* Скрываем грязный темный оверлей disabled, делавший кнопку черным пятном */
-      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .izi-switch__disable-overlay,
-      body.maxitet-smart-dark .izi-switch__disable-overlay {
+      body:not(.maxitet-zen-mode).maxitet-smart-dark .izi-switch__disable-overlay {
         display: none !important;
         opacity: 0 !important;
         pointer-events: none !important;
       }
 
-      /* Аккуратный современный переключатель в стиле iOS / Glassmorphism */
-      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .izi-switch,
-      body.maxitet-smart-dark .izi-switch {
+      body:not(.maxitet-zen-mode).maxitet-smart-dark .izi-switch {
         position: relative !important;
         width: 30px !important;
         min-width: 30px !important;
@@ -3135,9 +3590,7 @@
         vertical-align: middle !important;
       }
 
-      /* Дорожка переключателя (rail) */
-      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .izi-switch__rail,
-      body.maxitet-smart-dark .izi-switch__rail {
+      body:not(.maxitet-zen-mode).maxitet-smart-dark .izi-switch__rail {
         width: 30px !important;
         height: 16px !important;
         border-radius: 10px !important;
@@ -3148,9 +3601,7 @@
         transition: background-color 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease !important;
       }
 
-      /* Круглый ползунок (circle) */
-      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .izi-switch__circle,
-      body.maxitet-smart-dark .izi-switch__circle {
+      body:not(.maxitet-zen-mode).maxitet-smart-dark .izi-switch__circle {
         position: absolute !important;
         width: 12px !important;
         height: 12px !important;
@@ -3165,23 +3616,17 @@
         transition: left 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.2s ease !important;
       }
 
-      /* Включенное состояние (checked) */
-      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .izi-switch:has(.checked) .izi-switch__rail,
-      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .izi-switch:has(input:checked) .izi-switch__rail,
-      body.maxitet-smart-dark .izi-switch:has(.checked) .izi-switch__rail,
-      body.maxitet-smart-dark .izi-switch:has(input:checked) .izi-switch__rail {
+      body:not(.maxitet-zen-mode).maxitet-smart-dark .izi-switch:has(.checked) .izi-switch__rail,
+      body:not(.maxitet-zen-mode).maxitet-smart-dark .izi-switch:has(input:checked) .izi-switch__rail {
         background: #2563eb !important;
         background-color: #2563eb !important;
         border-color: #3b82f6 !important;
         box-shadow: 0 0 10px rgba(37, 99, 235, 0.4) !important;
       }
 
-      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .izi-switch:has(.checked) .izi-switch__circle,
-      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .izi-switch:has(input:checked) .izi-switch__circle,
-      body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .izi-switch__circle.checked,
-      body.maxitet-smart-dark .izi-switch:has(.checked) .izi-switch__circle,
-      body.maxitet-smart-dark .izi-switch:has(input:checked) .izi-switch__circle,
-      body.maxitet-smart-dark .izi-switch__circle.checked {
+      body:not(.maxitet-zen-mode).maxitet-smart-dark .izi-switch:has(.checked) .izi-switch__circle,
+      body:not(.maxitet-zen-mode).maxitet-smart-dark .izi-switch:has(input:checked) .izi-switch__circle,
+      body:not(.maxitet-zen-mode).maxitet-smart-dark .izi-switch__circle.checked {
         left: 16px !important;
         transform: none !important;
         background: #ffffff !important;
@@ -3610,11 +4055,17 @@
     dock.style.removeProperty('right');
     dock.style.removeProperty('bottom');
     dock.style.removeProperty('transform');
+    if (chrome.storage && chrome.storage.local) {
+      chrome.storage.local.remove(['maxitet_zen_dock_geometry']);
+    }
   }
 
   function initZenDockDraggable(dock) {
     if (!dock || dock._dragInitialized) return;
     dock._dragInitialized = true;
+    if (isZenModeActive && document.body.classList.contains('maxitet-zen-mode')) {
+      restoreZenDockGeometry(dock);
+    }
 
     // Смена ориентации (горизонтальная / вертикальная) по колёсику мыши на ручке с 6 точками
     const dockHandle = dock.querySelector('.maxitet-dock-drag-handle, #maxitet-dock-drag-handle');
@@ -3731,6 +4182,7 @@
       if (isDockDragging) {
         isDockDragging = false;
         dock.classList.remove('is-dragging');
+        saveZenDockGeometry();
         setTimeout(() => {
           dockDidDrag = false;
         }, 120);
@@ -3778,6 +4230,112 @@
   let chatDidDrag = false;
   let chatCurrentPointerId = null;
 
+  function saveZenChatGeometry() {
+    const drawer = document.querySelector('.dashboard-drawer');
+    if (!drawer || !drawer.classList.contains('is-dragged')) return;
+    const rect = drawer.getBoundingClientRect();
+    const geom = {
+      left: Math.round(rect.left),
+      top: Math.round(rect.top),
+      width: Math.round(rect.width),
+      height: Math.round(rect.height)
+    };
+    if (chrome.storage && chrome.storage.local) {
+      chrome.storage.local.set({ maxitet_zen_chat_geometry: geom });
+    }
+  }
+
+  function cleanupZenChatStyles(drawer) {
+    if (!drawer) drawer = document.querySelector('.dashboard-drawer');
+    if (!drawer) return;
+    drawer.classList.remove('maxitet-floating-chat-open');
+    drawer.classList.remove('is-dragged');
+    drawer.classList.remove('is-dragging');
+    drawer.style.removeProperty('left');
+    drawer.style.removeProperty('top');
+    drawer.style.removeProperty('right');
+    drawer.style.removeProperty('bottom');
+    drawer.style.removeProperty('transform');
+    drawer.style.removeProperty('width');
+    drawer.style.removeProperty('height');
+    const textarea = drawer.querySelector('.message-input .textarea');
+    if (textarea) {
+      textarea.style.height = '';
+      textarea.style.overflowY = '';
+    }
+  }
+
+  function restoreZenChatGeometry(drawer) {
+    if (!isZenModeActive || !document.body.classList.contains('maxitet-zen-mode')) return;
+    if (!drawer) drawer = document.querySelector('.dashboard-drawer');
+    if (!drawer) return;
+    if (chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['maxitet_zen_chat_geometry'], (res) => {
+        if (!isZenModeActive || !document.body.classList.contains('maxitet-zen-mode')) return;
+        const geom = res && res.maxitet_zen_chat_geometry;
+        if (!geom || typeof geom.left !== 'number') return;
+        const w = Math.max(260, Math.min(window.innerWidth - 16, geom.width || 340));
+        const h = Math.max(260, Math.min(window.innerHeight - 16, geom.height || 530));
+        const maxX = window.innerWidth - w - 8;
+        const maxY = window.innerHeight - h - 8;
+        const safeL = Math.max(8, Math.min(maxX, geom.left));
+        const safeT = Math.max(8, Math.min(maxY, geom.top));
+
+        drawer.classList.add('is-dragged');
+        drawer.style.setProperty('left', `${safeL}px`, 'important');
+        drawer.style.setProperty('top', `${safeT}px`, 'important');
+        drawer.style.setProperty('width', `${w}px`, 'important');
+        drawer.style.setProperty('height', `${h}px`, 'important');
+        drawer.style.setProperty('right', 'auto', 'important');
+        drawer.style.setProperty('bottom', 'auto', 'important');
+        drawer.style.setProperty('transform', 'none', 'important');
+
+        chatResizeWidth = w;
+        chatResizeHeight = h;
+      });
+    }
+  }
+
+  function saveZenDockGeometry() {
+    const dock = document.getElementById('maxitet-side-dock');
+    if (!dock || !dock.classList.contains('is-dragged')) return;
+    const rect = dock.getBoundingClientRect();
+    const geom = {
+      left: Math.round(rect.left),
+      top: Math.round(rect.top)
+    };
+    if (chrome.storage && chrome.storage.local) {
+      chrome.storage.local.set({ maxitet_zen_dock_geometry: geom });
+    }
+  }
+
+  function restoreZenDockGeometry(dock) {
+    if (!isZenModeActive || !document.body.classList.contains('maxitet-zen-mode')) return;
+    if (!dock) dock = document.getElementById('maxitet-side-dock');
+    if (!dock) return;
+    if (chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['maxitet_zen_dock_geometry'], (res) => {
+        if (!isZenModeActive || !document.body.classList.contains('maxitet-zen-mode')) return;
+        const geom = res && res.maxitet_zen_dock_geometry;
+        if (!geom || typeof geom.left !== 'number') return;
+        const rect = dock.getBoundingClientRect();
+        const dockW = rect.width || 280;
+        const dockH = rect.height || 40;
+        const maxX = window.innerWidth - dockW - 8;
+        const maxY = window.innerHeight - dockH - 8;
+        const safeL = Math.max(8, Math.min(maxX, geom.left));
+        const safeT = Math.max(8, Math.min(maxY, geom.top));
+
+        dock.classList.add('is-dragged');
+        dock.style.setProperty('left', `${safeL}px`, 'important');
+        dock.style.setProperty('top', `${safeT}px`, 'important');
+        dock.style.setProperty('right', 'auto', 'important');
+        dock.style.setProperty('bottom', 'auto', 'important');
+        dock.style.setProperty('transform', 'none', 'important');
+      });
+    }
+  }
+
   function resetZenChatPosition() {
     const drawer = document.querySelector('.dashboard-drawer');
     if (!drawer) return;
@@ -3792,6 +4350,9 @@
     drawer.style.removeProperty('height');
     chatResizeWidth = null;
     chatResizeHeight = null;
+    if (chrome.storage && chrome.storage.local) {
+      chrome.storage.local.remove(['maxitet_zen_chat_geometry']);
+    }
     window.dispatchEvent(new Event('resize'));
   }
 
@@ -3799,6 +4360,9 @@
     if (!drawer || drawer._chatDragInitialized) return;
     drawer._chatDragInitialized = true;
     initZenChatResizable(drawer);
+    if (isZenModeActive && document.body.classList.contains('maxitet-zen-mode')) {
+      restoreZenChatGeometry(drawer);
+    }
 
     const isDragArea = (target) => {
       if (!target) return false;
@@ -3907,6 +4471,7 @@
       if (isChatDragging) {
         isChatDragging = false;
         drawer.classList.remove('is-dragging');
+        saveZenChatGeometry();
         setTimeout(() => {
           chatDidDrag = false;
         }, 120);
@@ -3958,6 +4523,49 @@
         drawer.style.setProperty('top', `${Math.max(8, Math.min(maxY, rect.top))}px`, 'important');
       }
     });
+
+    // Динамическое расширение поля ввода (1-3 строки) без полосы прокрутки по умолчанию
+    drawer.addEventListener('input', (e) => {
+      if (!isZenModeActive) return;
+      if (e.target && e.target.classList && e.target.classList.contains('textarea')) {
+        handleChatTextareaResize(e.target);
+      }
+    });
+
+    drawer.addEventListener('keydown', (e) => {
+      if (!isZenModeActive) return;
+      if (e.target && e.target.classList && e.target.classList.contains('textarea')) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          setTimeout(() => handleChatTextareaResize(e.target), 20);
+        }
+      }
+    });
+
+    drawer.addEventListener('click', (e) => {
+      if (!isZenModeActive) return;
+      if (e.target && e.target.closest('.message-input__send-button')) {
+        setTimeout(() => {
+          const textarea = drawer.querySelector('.message-input .textarea');
+          if (textarea) handleChatTextareaResize(textarea);
+        }, 20);
+      }
+    });
+  }
+
+  function handleChatTextareaResize(textarea) {
+    if (!textarea || !isZenModeActive) return;
+    textarea.style.height = 'auto';
+    const lineHeight = 15;
+    const padding = 4;
+    const maxHeight = lineHeight * 3 + padding; // 49px = ровно 3 строки
+    const scrollH = textarea.scrollHeight;
+    if (scrollH > maxHeight + 2) {
+      textarea.style.height = `${maxHeight}px`;
+      textarea.style.overflowY = 'auto';
+    } else {
+      textarea.style.height = `${Math.max(19, scrollH)}px`;
+      textarea.style.overflowY = 'hidden';
+    }
   }
 
   // ─── Изменение размера чата в Дзен-режиме ───────────────────
@@ -4085,6 +4693,7 @@
       if (!isResizing) return;
       isResizing = false;
       document.body.classList.remove('maxitet-is-dragging-active');
+      saveZenChatGeometry();
       window.dispatchEvent(new Event('resize'));
     };
 
@@ -4183,8 +4792,24 @@
 
   function handleZenWheel(e) {
     if (!isZenModeActive) return;
-    if (e.target && typeof e.target.closest === 'function' && e.target.closest('#maxitet-side-dock, .dashboard-drawer, .dashboard, .dashboard__content')) {
+
+    const interactiveSelector = '#maxitet-side-dock, .dashboard-drawer, .dashboard, .dashboard__content, ' +
+      '.v3-emoji-picker, .izi-menu, .emoji__picker, [class*="emoji-picker"], [class*="emoji"], ' +
+      '.reactions, .message-actions, .message-actions__tooltip, .izi-tooltip, ' +
+      '[role="menu"], [role="dialog"], [role="listbox"], [role="tooltip"], ' +
+      '.chat-scroller, .message-input, .textarea';
+
+    if (e.target && typeof e.target.closest === 'function' && e.target.closest(interactiveSelector)) {
       return;
+    }
+
+    if (typeof e.composedPath === 'function') {
+      const path = e.composedPath();
+      for (const el of path) {
+        if (el && el.nodeType === 1 && typeof el.matches === 'function' && el.matches(interactiveSelector)) {
+          return;
+        }
+      }
     }
 
     const container = document.querySelector('.meeting__screen-sharing-area');
@@ -4196,6 +4821,11 @@
     const clientY = (e.clientY != null && e.clientY > 0) ? e.clientY : (rect.top + rect.height / 2);
 
     if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
+      return;
+    }
+
+    const elUnderCursor = document.elementFromPoint(clientX, clientY);
+    if (elUnderCursor && typeof elUnderCursor.closest === 'function' && elUnderCursor.closest(interactiveSelector)) {
       return;
     }
 
@@ -4310,15 +4940,22 @@
     const drawer = document.querySelector('.dashboard-drawer');
     if (!drawer) return;
 
-    initZenChatDraggable(drawer);
+    if (isZenModeActive) {
+      initZenChatDraggable(drawer);
+    }
 
     const shouldOpen = typeof forceOpen === 'boolean'
       ? forceOpen
       : !drawer.classList.contains('maxitet-floating-chat-open');
 
     drawer.classList.toggle('maxitet-floating-chat-open', shouldOpen);
-    if (shouldOpen) {
+    if (shouldOpen && isZenModeActive) {
       initZenChatResizable(drawer);
+      restoreZenChatGeometry(drawer);
+      setTimeout(() => {
+        const textarea = drawer.querySelector('.message-input .textarea');
+        if (textarea) handleChatTextareaResize(textarea);
+      }, 50);
     }
     syncZenDock();
     setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
@@ -4405,7 +5042,12 @@
     }
 
     if (dockChat && drawer) {
-      initZenChatDraggable(drawer);
+      if (isZenModeActive) {
+        initZenChatDraggable(drawer);
+      } else if (drawer.classList.contains('is-dragged') || drawer.style.left || drawer.style.width) {
+        // Гарантия чистоты обычного режима: удаляем любые оставшиеся инлайн-стили Дзена
+        cleanupZenChatStyles(drawer);
+      }
       const open = drawer.classList.contains('maxitet-floating-chat-open');
       dockChat.classList.toggle('is-active-chat', open);
       const wasOpen = document.body.classList.contains('maxitet-zen-chat-open');
@@ -4662,6 +5304,8 @@
         }
         if (res.zenMode) {
           setZenMode(true);
+        } else {
+          cleanupZenChatStyles();
         }
         if (res.smartDarkMode) {
           setSmartDarkMode(true, false);

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Maxitet Master",
-  "version": "2.8.0",
+  "version": "2.8.3",
   "description": "Многофункциональный инструмент для М.Класс (vision.maximumtest.ru): PiP, отдельное окно, тёмная тема слайдов, режим невидимки и скачивание презентаций в PDF",
   "permissions": [
     "activeTab",
