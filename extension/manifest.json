@@ -5,7 +5,6 @@
   "description": "Многофункциональный инструмент для М.Класс (vision.maximumtest.ru): PiP, отдельное окно, тёмная тема слайдов, режим невидимки и скачивание презентаций в PDF",
   "permissions": [
     "activeTab",
-    "scripting",
     "storage",
     "unlimitedStorage",
     "downloads",
@@ -13,8 +12,8 @@
   ],
   "host_permissions": [
     "https://vision.maximumtest.ru/*",
-    "https://*.yandexcloud.net/*",
-    "*://*/*"
+    "https://*.maximumtest.ru/*",
+    "https://*.yandexcloud.net/*"
   ],
   "action": {
     "default_popup": "popup.html",

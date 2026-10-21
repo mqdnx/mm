@@ -217,11 +217,16 @@
       }
     }
     if (event.data.type === 'MAXITET_SAVE_LOOP_FRAMES' && Array.isArray(event.data.frames)) {
-      if (chrome.storage && chrome.storage.local) {
-        chrome.storage.local.set({
-          freezeCamLoopFrames: event.data.frames,
-          freezeCamHasSavedLoop: true,
-        });
+      const validFrames = event.data.frames.filter(
+        (f) => typeof f === 'string' && f.startsWith('data:image/')
+      );
+      if (validFrames.length > 0 && validFrames.length <= 60) {
+        if (chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({
+            freezeCamLoopFrames: validFrames,
+            freezeCamHasSavedLoop: true,
+          });
+        }
       }
     }
     if (event.data.type === 'MAXITET_PHOTO_STATUS') {
@@ -231,7 +236,7 @@
         showFloatingToast('Включите камеру в вебинаре для снимка', SVG_TOAST_FREEZE);
       }
     }
-    if (event.data.type === 'MAXITET_SAVE_PHOTO' && event.data.dataUrl) {
+    if (event.data.type === 'MAXITET_SAVE_PHOTO' && typeof event.data.dataUrl === 'string' && event.data.dataUrl.startsWith('data:image/')) {
       if (chrome.storage && chrome.storage.local) {
         chrome.storage.local.set({
           freezeCamPhoto: event.data.dataUrl,
@@ -1455,6 +1460,7 @@
   // ─── Message Handling ────────────────────────────────────
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (sender.id && sender.id !== chrome.runtime.id) return;
     if (message.target !== 'content') return;
 
     switch (message.type) {

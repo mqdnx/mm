@@ -15,6 +15,9 @@ function sanitizeDownloadFilename(filename) {
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Допускаем вызовы только от собственного расширения (popup / content)
+  if (sender.id !== chrome.runtime.id) return;
+
   if (message.target === 'background') {
     if (message.type === 'FETCH_IMAGE_BASE64') {
       const rawUrl = message.url;
@@ -57,6 +60,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       if (isPrivateOrLoopback) {
         sendResponse({ error: 'Запрещен доступ к локальным и приватным адресам' });
+        return true;
+      }
+
+      // Разрешаем скачивание изображений строго с доменов М.Класс и Yandex Cloud Storage
+      const isAllowedDomain =
+        host === 'maximumtest.ru' ||
+        host.endsWith('.maximumtest.ru') ||
+        host === 'yandexcloud.net' ||
+        host.endsWith('.yandexcloud.net');
+
+      if (!isAllowedDomain) {
+        sendResponse({ error: 'Запрещенный домен для загрузки' });
         return true;
       }
 
@@ -123,11 +138,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (!tabs[0]) {
+      const activeTab = tabs[0];
+      if (!activeTab || !activeTab.id) {
         sendResponse({ error: 'Нет активной вкладки' });
         return;
       }
-      chrome.tabs.sendMessage(tabs[0].id, { ...message, target: 'content' }, (response) => {
+      if (!activeTab.url || !activeTab.url.includes('maximumtest.ru')) {
+        sendResponse({ error: 'Активная вкладка не является страницей М.Класс' });
+        return;
+      }
+      chrome.tabs.sendMessage(activeTab.id, { ...message, target: 'content' }, (response) => {
         if (chrome.runtime.lastError) {
           sendResponse({ error: chrome.runtime.lastError.message });
         } else {

@@ -505,6 +505,7 @@
     isLoopRunning = true;
 
     function loop(now) {
+      if (!isLoopRunning) return;
       if (virtualCanvas && virtualCtx) {
         if (liveWebcamVideo && liveWebcamVideo.readyState >= 2) {
           const vw = liveWebcamVideo.videoWidth || 640;
@@ -676,9 +677,10 @@
           stream.getAudioTracks().forEach(t => outputStream.addTrack(t));
           outputStream.addTrack(virtualVideoTrack);
 
-          // Связываем остановку треков
+          // Связываем остановку треков и остановку цикла рендеринга
           const origStop = virtualVideoTrack.stop.bind(virtualVideoTrack);
           virtualVideoTrack.stop = () => {
+            isLoopRunning = false;
             origStop();
             originalVideoTrack.stop();
           };

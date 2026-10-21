@@ -336,6 +336,18 @@
       const file = freezeGifFile.files && freezeGifFile.files[0];
       if (!file) return;
 
+      if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+        showToast('Недопустимый формат файла (требуется GIF или видео)', 'error');
+        freezeGifFile.value = '';
+        return;
+      }
+
+      if (file.size > 25 * 1024 * 1024) {
+        showToast('Файл слишком большой (максимум 25 МБ)', 'error');
+        freezeGifFile.value = '';
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = () => {
         const dataUrl = reader.result;
@@ -380,6 +392,18 @@
     freezePhotoFile.addEventListener('change', () => {
       const file = freezePhotoFile.files && freezePhotoFile.files[0];
       if (!file) return;
+
+      if (!file.type.startsWith('image/')) {
+        showToast('Недопустимый формат файла (требуется изображение)', 'error');
+        freezePhotoFile.value = '';
+        return;
+      }
+
+      if (file.size > 15 * 1024 * 1024) {
+        showToast('Файл слишком большой (максимум 15 МБ)', 'error');
+        freezePhotoFile.value = '';
+        return;
+      }
 
       const reader = new FileReader();
       reader.onload = () => {
