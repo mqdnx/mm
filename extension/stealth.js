@@ -296,6 +296,7 @@
     try {
       const bitmaps = [];
       for (const url of dataUrls) {
+        if (typeof url !== 'string' || (!url.startsWith('data:image/') && !url.startsWith('blob:'))) continue;
         const res = await fetch(url);
         const blob = await res.blob();
         const bmp = await createImageBitmap(blob);
@@ -316,7 +317,7 @@
       savedPhotoBitmap.close();
       savedPhotoBitmap = null;
     }
-    if (!dataUrl) return;
+    if (!dataUrl || typeof dataUrl !== 'string' || (!dataUrl.startsWith('data:image/') && !dataUrl.startsWith('blob:'))) return;
     try {
       const res = await fetch(dataUrl);
       const blob = await res.blob();
@@ -370,7 +371,7 @@
       customVideoEl = null;
     }
 
-    if (!dataUrl) return;
+    if (!dataUrl || typeof dataUrl !== 'string' || (!dataUrl.startsWith('data:') && !dataUrl.startsWith('blob:'))) return;
 
     try {
       const res = await fetch(dataUrl);

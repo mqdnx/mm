@@ -156,7 +156,16 @@
 
     const toast = document.createElement('div');
     toast.id = 'maxitet-floating-toast';
-    toast.innerHTML = `<span style="display:inline-flex;align-items:center;opacity:0.85;">${iconSvg}</span> <span>${msg}</span>`;
+
+    const iconSpan = document.createElement('span');
+    iconSpan.style.cssText = 'display:inline-flex;align-items:center;opacity:0.85;';
+    iconSpan.innerHTML = iconSvg;
+
+    const textSpan = document.createElement('span');
+    textSpan.textContent = msg;
+
+    toast.appendChild(iconSpan);
+    toast.appendChild(textSpan);
     toast.style.cssText = `
       position: fixed;
       bottom: 85px;
@@ -194,7 +203,7 @@
   }
 
   window.addEventListener('message', (event) => {
-    if (!event.data) return;
+    if (event.source !== window || !event.data) return;
     if (event.data.type === 'MAXITET_PRESENTATION_STORE_DATA') {
       cachedPresentationStore = event.data.data;
     }
@@ -3307,7 +3316,7 @@
       }
 
       /* Панель ввода Варианта 2 (Action Bar Group):
-         Поле ввода + кнопка [🎓 Только преподу] + кнопка [➤ Отправить] в ОДНУ компактную 32px строку!
+         Поле ввода + кнопка [Только преподу] + кнопка [Отправить] в ОДНУ компактную 32px строку!
          Ликвидирована отдельная строка для тумблера «Только преподавателю», сжиравшая высоту. */
       body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat-actions {
         position: relative !important;
@@ -3464,7 +3473,7 @@
         display: none !important;
       }
 
-      /* Иконка шапочки преподавателя 🎓 через SVG mask */
+      /* Иконка шапочки преподавателя через SVG mask */
       body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .izi-switch::before {
         content: '' !important;
         display: block !important;
@@ -3502,7 +3511,7 @@
         box-shadow: 0 0 12px rgba(34, 197, 94, 0.15) !important;
       }
 
-      /* Всплывающая подсказка при наведении на кнопку [🎓] */
+      /* Всплывающая подсказка при наведении на кнопку */
       body.maxitet-zen-mode .dashboard-drawer.maxitet-floating-chat-open .chat-actions__tools-switch-wrapper::after {
         content: 'Только преподавателю' !important;
         position: absolute !important;

@@ -28,6 +28,17 @@
   let activeVideoIndex = -1;
   let activeWindowType = null; // 'pip' | 'window'
 
+  function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str).replace(/[&<>"']/g, (m) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    })[m]);
+  }
+
   // ─── Stealth Mode (Default: OFF) ──────────────────────────
 
   function updateStealthUI(enabled) {
@@ -621,30 +632,41 @@
       const isWindowActive = isCurrentActive && activeWindowType === 'window';
       const isPipActive = isCurrentActive && activeWindowType === 'pip';
 
-      const cleanLabel = (video.label || 'Видео').replace(/^[\p{Emoji}\s]+/u, '').trim();
+      const rawLabel = (video.label || 'Видео').replace(/^[\p{Emoji}\s]+/u, '').trim();
+      const safeLabel = escapeHtml(rawLabel || 'Видео');
+      const safeWidth = Number(video.width) || 0;
+      const safeHeight = Number(video.height) || 0;
+      const safeIndex = escapeHtml(String(video.index));
       const icon = getVideoIcon(video.type);
+
+      const isSafeThumb = typeof video.thumbnail === 'string' && (
+        video.thumbnail.startsWith('data:image/') ||
+        video.thumbnail.startsWith('blob:') ||
+        video.thumbnail.startsWith('https://')
+      );
+      const safeThumbAttr = isSafeThumb ? escapeHtml(video.thumbnail) : null;
 
       card.innerHTML = `
         <div class="video-header">
           <div class="video-label">
             ${icon}
-            <span>${cleanLabel}</span>
+            <span>${safeLabel}</span>
             ${isScreen ? '<span class="badge">REC</span>' : ''}
           </div>
-          <div class="video-meta">${video.width}×${video.height}</div>
+          <div class="video-meta">${safeWidth}×${safeHeight}</div>
         </div>
         <div class="video-thumb-container">
           ${
-            video.thumbnail
-              ? `<img class="video-thumb" src="${video.thumbnail}" alt="preview">`
+            safeThumbAttr
+              ? `<img class="video-thumb" src="${safeThumbAttr}" alt="preview">`
               : `<div class="video-thumb-placeholder">Загрузка кадра…</div>`
           }
         </div>
         <div class="video-actions">
-          <button class="btn btn-window${isWindowActive ? ' active' : ''}" data-index="${video.index}" title="Отдельное чистое окно: можно развернуть на 100% экрана или разделить экран с IDE (Win + стрелочки)">
+          <button class="btn btn-window${isWindowActive ? ' active' : ''}" data-index="${safeIndex}" title="Отдельное чистое окно: можно развернуть на 100% экрана или разделить экран с IDE (Win + стрелочки)">
             ${isWindowActive ? `${SVG_BTN_CLOSE}<span>Закрыть</span>` : `${SVG_BTN_WINDOW}<span>Окно (100% / Сплит)</span>`}
           </button>
-          <button class="btn btn-pip${isPipActive ? ' active' : ''}" data-index="${video.index}" title="Плавающее окно поверх всех окон (Always on top)">
+          <button class="btn btn-pip${isPipActive ? ' active' : ''}" data-index="${safeIndex}" title="Плавающее окно поверх всех окон (Always on top)">
             ${isPipActive ? `${SVG_BTN_CLOSE}<span>Закрыть</span>` : `${SVG_BTN_PIP}<span>PiP</span>`}
           </button>
         </div>
