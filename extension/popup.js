@@ -16,6 +16,14 @@
   const pdfProgressText = document.getElementById('pdf-progress-text');
   const pdfStatus = document.getElementById('pdf-status');
 
+  const versionEl = document.querySelector('.version');
+  if (versionEl && typeof chrome !== 'undefined' && chrome.runtime?.getManifest) {
+    const manifest = chrome.runtime.getManifest();
+    if (manifest?.version) {
+      versionEl.textContent = `v${manifest.version}`;
+    }
+  }
+
   let currentVideos = [];
   let activeVideoIndex = -1;
   let activeWindowType = null; // 'pip' | 'window'
