@@ -11,7 +11,7 @@
 
   <br>
 
-  <img src="assets/popup-preview.png" alt="Интерфейс Maxitet Master" width="340">
+  <img src="assets/popup-preview.png" alt="Интерфейс Maxitet Master" width="320">
 </div>
 
 ---
